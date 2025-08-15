@@ -1,0 +1,31 @@
+package com.api.erpdistribuidora.dto;
+
+import lombok.*;
+import jakarta.validation.constraints.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
+@Builder
+public class ProdutoRequestDTO {
+
+    @NotBlank(message = "nome é obrigatório")
+    @Size(max = 100, message = "nome deve ter no máximo 100 caracteres")
+    private String nome;
+
+    private String descricao;
+
+    @NotNull(message = "precoUnitario é obrigatório")
+    @DecimalMin(value = "0.01", inclusive = true, message = "precoUnitario deve ser > 0")
+    private BigDecimal precoUnitario;
+
+    @NotBlank(message = "unidadeMedida é obrigatória")
+    @Size(max = 10, message = "unidadeMedida deve ter no máximo 10 caracteres")
+    private String unidadeMedida;
+
+    private LocalDate dataValidade;
+
+    // opcional, default true na entidade
+    private Boolean ativo;
+}
