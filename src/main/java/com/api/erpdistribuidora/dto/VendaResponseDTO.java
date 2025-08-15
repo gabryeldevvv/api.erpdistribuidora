@@ -8,6 +8,7 @@ import java.util.List;
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class VendaResponseDTO {
+    // comentario
     private Long id;
     private LocalDateTime dataVenda;
     private String status;
