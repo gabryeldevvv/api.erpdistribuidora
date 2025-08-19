@@ -18,4 +18,7 @@ public class EstoqueService {
     public List<Estoque> listarPorProduto(Long idProduto) {
         return estoqueRepository.findByProdutoId(idProduto);
     }
+
+    @Transactional(readOnly = true)
+    public List<Estoque> listarTodos() { return estoqueRepository.findAll(); }
 }

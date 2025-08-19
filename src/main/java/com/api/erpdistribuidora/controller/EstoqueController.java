@@ -14,6 +14,13 @@ public class EstoqueController {
     private final EstoqueService estoqueService;
     private final EstoqueMapper estoqueMapper;
 
+    @GetMapping
+    public ResponseEntity<?> listarTodos() {
+        var lista = estoqueService.listarTodos();
+        return ResponseEntity.ok(estoqueMapper.toResponseDTOList(lista));
+    }
+
+
     @GetMapping("/produto/{idProduto}")
     public ResponseEntity<?> listarPorProduto(@PathVariable Long idProduto) {
         var lista = estoqueService.listarPorProduto(idProduto);
