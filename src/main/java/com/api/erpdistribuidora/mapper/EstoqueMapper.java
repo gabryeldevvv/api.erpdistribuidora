@@ -14,13 +14,16 @@ public class EstoqueMapper {
 
     public Estoque toEntity(EstoqueRequestDTO dto) {
         if (dto == null) return null;
-        Produto produto = new Produto();
-        produto.setId(dto.getIdProduto());
-        return Estoque.builder()
-                .produto(produto)
+        var builder = Estoque.builder()
                 .localizacao(dto.getLocalizacao())
-                .quantidade(dto.getQuantidade())
-                .build();
+                .quantidade(dto.getQuantidade());
+
+        if (dto.getIdProduto() != null) {
+            Produto produto = new Produto();
+            produto.setId(dto.getIdProduto());
+            builder.produto(produto);
+        }
+        return builder.build();
     }
 
     public EstoqueResponseDTO toResponseDTO(Estoque entity) {
@@ -38,4 +41,6 @@ public class EstoqueMapper {
     public List<EstoqueResponseDTO> toResponseDTOList(List<Estoque> entities) {
         return entities.stream().map(this::toResponseDTO).collect(Collectors.toList());
     }
+
+
 }
