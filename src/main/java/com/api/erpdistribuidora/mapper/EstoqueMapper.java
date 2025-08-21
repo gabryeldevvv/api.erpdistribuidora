@@ -4,6 +4,7 @@ import com.api.erpdistribuidora.dto.EstoqueRequestDTO;
 import com.api.erpdistribuidora.dto.EstoqueResponseDTO;
 import com.api.erpdistribuidora.model.Estoque;
 import com.api.erpdistribuidora.model.Produto;
+import com.api.erpdistribuidora.model.Local;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -14,16 +15,21 @@ public class EstoqueMapper {
 
     public Estoque toEntity(EstoqueRequestDTO dto) {
         if (dto == null) return null;
-        var builder = Estoque.builder()
-                .localizacao(dto.getLocalizacao())
-                .quantidade(dto.getQuantidade());
-
+        Produto produto = null;
         if (dto.getIdProduto() != null) {
-            Produto produto = new Produto();
+            produto = new Produto();
             produto.setId(dto.getIdProduto());
-            builder.produto(produto);
         }
-        return builder.build();
+        Local local = null;
+        if (dto.getIdLocal() != null) {
+            local = new Local();
+            local.setId(dto.getIdLocal());
+        }
+        return Estoque.builder()
+                .produto(produto)
+                .local(local)
+                .quantidade(dto.getQuantidade())
+                .build();
     }
 
     public EstoqueResponseDTO toResponseDTO(Estoque entity) {
@@ -33,7 +39,8 @@ public class EstoqueMapper {
                 .idProduto(entity.getProduto() != null ? entity.getProduto().getId() : null)
                 .nomeProduto(entity.getProduto() != null ? entity.getProduto().getNome() : null)
                 .quantidade(entity.getQuantidade())
-                .localizacao(entity.getLocalizacao())
+                .idLocal(entity.getLocal() != null ? entity.getLocal().getId() : null)
+                .nomeLocal(entity.getLocal() != null ? entity.getLocal().getNome() : null)
                 .ultimaAtualizacao(entity.getUltimaAtualizacao())
                 .build();
     }
@@ -41,6 +48,4 @@ public class EstoqueMapper {
     public List<EstoqueResponseDTO> toResponseDTOList(List<Estoque> entities) {
         return entities.stream().map(this::toResponseDTO).collect(Collectors.toList());
     }
-
-
 }

@@ -9,7 +9,7 @@ import java.util.Optional;
 
 @Repository
 public interface EstoqueRepository extends JpaRepository<Estoque, Long> {
-    Optional<Estoque> findByProdutoIdAndLocalizacao(Long idProduto, String localizacao);
+    Optional<Estoque> findByProdutoIdAndLocalId(Long idProduto, Long idLocal);
 
     List<Estoque> findByProdutoId(Long idProduto);
 

@@ -12,10 +12,13 @@ import java.time.LocalDateTime;
 @Table(
         name = "estoque",
         uniqueConstraints = @UniqueConstraint(
-                name = "uq_estoque_produto_localizacao",
-                columnNames = {"id_produto", "localizacao"}
+                name = "uq_estoque_produto_local",
+                columnNames = {"id_produto", "id_local"}
         ),
-        indexes = { @Index(name = "idx_estoque_produto", columnList = "id_produto") }
+        indexes = {
+                @Index(name = "idx_estoque_produto", columnList = "id_produto"),
+                @Index(name = "idx_estoque_local", columnList = "id_local")
+        }
 )
 public class Estoque {
 
@@ -28,12 +31,12 @@ public class Estoque {
     @JoinColumn(name = "id_produto", nullable = false)
     private Produto produto;
 
-    @Builder.Default
     @Column(nullable = false)
-    private Integer quantidade = 0;
+    private Integer quantidade;
 
-    @Column(nullable = false, length = 50)
-    private String localizacao;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_local", nullable = false)
+    private Local local;
 
     @Column(name = "ultima_atualizacao")
     private LocalDateTime ultimaAtualizacao;
@@ -44,4 +47,3 @@ public class Estoque {
         this.ultimaAtualizacao = LocalDateTime.now();
     }
 }
-

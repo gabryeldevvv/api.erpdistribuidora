@@ -11,7 +11,7 @@ public class EstoqueResponseDTO {
     private Long idProduto;
     private String nomeProduto;
     private Integer quantidade;
-    private String localizacao;
+    private Long idLocal;
+    private String nomeLocal;
     private LocalDateTime ultimaAtualizacao;
 }
-

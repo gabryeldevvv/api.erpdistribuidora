@@ -1,11 +1,9 @@
-// src/main/java/com/api/erpdistribuidora/controller/EstoqueController.java
 package com.api.erpdistribuidora.controller;
 
 import com.api.erpdistribuidora.dto.EstoqueRequestDTO;
 import com.api.erpdistribuidora.dto.EstoqueResponseDTO;
-import com.api.erpdistribuidora.mapper.EstoqueMapper;
-import com.api.erpdistribuidora.model.Estoque;
 import com.api.erpdistribuidora.service.EstoqueService;
+import com.api.erpdistribuidora.service.EstoqueService.EstoquePorLocalResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,70 +19,40 @@ import java.util.List;
 public class EstoqueController {
 
     private final EstoqueService estoqueService;
-    private final EstoqueMapper estoqueMapper;
+    private final com.api.erpdistribuidora.mapper.EstoqueMapper estoqueMapper;
 
-    // GET /estoques → lista geral
     @GetMapping
-    public ResponseEntity<List<EstoqueResponseDTO>> listarTodos() {
-        var lista = estoqueService.listarTodos();
-        return ResponseEntity.ok(estoqueMapper.toResponseDTOList(lista));
+    public ResponseEntity<List<EstoqueResponseDTO>> listar() {
+        return ResponseEntity.ok(estoqueService.listar());
     }
 
-    // GET /estoques/{id} → detalhe
     @GetMapping("/{id}")
-    public ResponseEntity<EstoqueResponseDTO> obter(@PathVariable Long id) {
-        var entity = estoqueService.buscarPorId(id);
-        return ResponseEntity.ok(estoqueMapper.toResponseDTO(entity));
+    public ResponseEntity<EstoqueResponseDTO> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(estoqueService.buscarPorId(id));
     }
 
-    // GET /estoques/produto/{idProduto} → lista por produto
-    @GetMapping("/produto/{idProduto}")
-    public ResponseEntity<List<EstoqueResponseDTO>> listarPorProduto(@PathVariable Long idProduto) {
-        var lista = estoqueService.listarPorProduto(idProduto);
-        return ResponseEntity.ok(estoqueMapper.toResponseDTOList(lista));
-    }
-
-    // POST /estoques → cria top-level (tela /estoques)
     @PostMapping
     public ResponseEntity<EstoqueResponseDTO> criar(@Valid @RequestBody EstoqueRequestDTO dto) {
-        Estoque entity = estoqueMapper.toEntity(dto);
-        var salvo = estoqueService.criar(entity);
-        var body = estoqueMapper.toResponseDTO(salvo);
-        return ResponseEntity
-                .created(URI.create("/estoques/" + body.getId()))
-                .body(body);
+        var criado = estoqueService.criar(dto);
+        return ResponseEntity.created(URI.create("/estoques/" + criado.getId())).body(criado);
     }
 
-    // POST /estoques/produto/{idProduto} → cria já atrelado ao produto da rota
-    @PostMapping("/produto/{idProduto}")
-    public ResponseEntity<EstoqueResponseDTO> criarParaProduto(
-            @PathVariable Long idProduto,
-            @Valid @RequestBody EstoqueRequestDTO dto
-    ) {
-        dto.setIdProduto(idProduto); // garante consistência com a rota
-        var salvo = estoqueService.criar(estoqueMapper.toEntity(dto));
-        var body = estoqueMapper.toResponseDTO(salvo);
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .location(URI.create("/estoques/" + body.getId()))
-                .body(body);
-    }
-
-    // PUT /estoques/{id} → atualização
     @PutMapping("/{id}")
-    public ResponseEntity<EstoqueResponseDTO> atualizar(
-            @PathVariable Long id,
-            @Valid @RequestBody EstoqueRequestDTO dto
-    ) {
-        Estoque atualizacoes = estoqueMapper.toEntity(dto);
-        var atualizado = estoqueService.atualizar(id, atualizacoes);
+    public ResponseEntity<EstoqueResponseDTO> atualizar(@PathVariable Long id,
+            @Valid @RequestBody EstoqueRequestDTO dto) {
+        var atualizado = estoqueService.atualizar(id, estoqueMapper.toEntity(dto));
         return ResponseEntity.ok(estoqueMapper.toResponseDTO(atualizado));
     }
 
-    // DELETE /estoques/{id} → exclusão
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> remover(@PathVariable Long id) {
         estoqueService.remover(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // GET /estoques/por-local → retorna estoques agrupados por local
+    @GetMapping("/por-local")
+    public ResponseEntity<List<EstoquePorLocalResponseDTO>> listarAgrupadoPorLocal() {
+        return ResponseEntity.ok(estoqueService.listarAgrupadoPorLocal());
     }
 }

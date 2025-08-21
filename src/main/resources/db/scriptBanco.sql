@@ -1,5 +1,14 @@
 -- =======================
 -- 1. TABELAS PRINCIPAIS
+
+
+-- Tabela de Local de Estoque (nova)
+CREATE TABLE local_estoque (
+    id_local SERIAL PRIMARY KEY,
+    nome VARCHAR(80) NOT NULL UNIQUE,
+    descricao VARCHAR(255)
+);
+
 -- =======================
 
 -- Tabela de Produto (atualizada seguindo padrão de referência)
@@ -20,10 +29,10 @@ CREATE TABLE estoque (
     id_estoque SERIAL PRIMARY KEY,
     id_produto INTEGER NOT NULL REFERENCES produto(id_produto) ON DELETE CASCADE,
     quantidade INTEGER NOT NULL DEFAULT 0,
-    localizacao VARCHAR(50) NOT NULL,
+    id_local INTEGER NOT NULL REFERENCES local_estoque(id_local) ON DELETE RESTRICT,
     ultima_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CHECK (quantidade >= 0),
-    UNIQUE (id_produto, localizacao)
+    UNIQUE (id_produto, id_local)
 );
 
 -- Tabela de Venda (reorganizada)
@@ -148,5 +157,4 @@ EXECUTE FUNCTION processar_estoque_apos_venda();
 
 COMMENT ON TABLE produto IS 'Armazena informações dos produtos disponíveis para venda';
 COMMENT ON COLUMN produto.preco_unitario IS 'Preço unitário do produto em reais (R$)';
-COMMENT ON COLUMN estoque.localizacao IS 'Local físico onde o produto está armazenado no estoque';
 COMMENT ON FUNCTION processar_estoque_apos_venda() IS 'Função para atualizar estoque automaticamente após confirmação de venda';
