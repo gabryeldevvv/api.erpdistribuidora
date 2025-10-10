@@ -86,7 +86,7 @@ public class CategoriaService {
 
     /** Regras de negócio conforme DDL/trigger informados */
     private Categoria resolverEValidarPai(Long idPai, TipoCategoria tipoAtual, Long idAtual) {
-        if (tipoAtual == TipoCategoria.DEPARTAMENTO) {
+        if (tipoAtual == TipoCategoria.Departamento) {
             // Departamento NÃO pode ter pai
             if (idPai != null) {
                 throw new RegraCategoriaInvalidaException("Departamento não pode possuir categoria-pai.");
@@ -107,7 +107,7 @@ public class CategoriaService {
         Categoria pai = repository.findById(idPai)
                 .orElseThrow(() -> new RegraCategoriaInvalidaException("Categoria-pai inexistente."));
 
-        if (pai.getTipo() != TipoCategoria.DEPARTAMENTO) {
+        if (pai.getTipo() != TipoCategoria.Departamento) {
             throw new RegraCategoriaInvalidaException("Categoria-pai deve ser do tipo 'Departamento'.");
         }
 
