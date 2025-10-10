@@ -31,7 +31,6 @@ public class CategoriaMapper {
                 .nome(entity.getNome())
                 .tipo(entity.getTipo())
                 .idCategoriaPai(entity.getCategoriaPai() != null ? entity.getCategoriaPai().getId() : null)
-                .dataCadastro(entity.getDataCadastro())
                 .build();
     }
 

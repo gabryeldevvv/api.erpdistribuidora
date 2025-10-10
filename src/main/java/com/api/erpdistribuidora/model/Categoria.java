@@ -46,8 +46,4 @@ public class Categoria {
 
     @OneToMany(mappedBy = "categoriaPai")
     private List<Categoria> subcategorias;
-
-    @CreationTimestamp
-    @Column(name = "data_cadastro", updatable = false)
-    private LocalDateTime dataCadastro;
 }

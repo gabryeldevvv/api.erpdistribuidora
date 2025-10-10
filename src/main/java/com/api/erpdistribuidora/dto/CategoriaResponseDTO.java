@@ -14,6 +14,5 @@ public class CategoriaResponseDTO {
     private String idPublico;
     private String nome;
     private TipoCategoria tipo;
-    private Long idCategoriaPai; // se houver
-    private LocalDateTime dataCadastro;
+    private Long idCategoriaPai;
 }
