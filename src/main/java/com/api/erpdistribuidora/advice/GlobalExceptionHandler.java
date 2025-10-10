@@ -58,4 +58,14 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR,
                 ex.getMessage() != null ? ex.getMessage() : "Erro interno sem mensagem");
     }
+
+    @ExceptionHandler(CategoriaNaoEncontradaException.class)
+    public ResponseEntity<Object> handleCategoriaNaoEncontrada(CategoriaNaoEncontradaException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(RegraCategoriaInvalidaException.class)
+    public ResponseEntity<Object> handleRegraCategoria(RegraCategoriaInvalidaException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
 }
