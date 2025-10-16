@@ -2,8 +2,6 @@ package com.api.erpdistribuidora.service.storage;
 
 import com.api.erpdistribuidora.config.SupabaseProps;
 import com.api.erpdistribuidora.dto.UploadResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
@@ -21,52 +19,52 @@ import java.util.UUID;
 @Service
 public class SupabaseStorageService {
 
-    private static final Logger log = LoggerFactory.getLogger(SupabaseStorageService.class);
-
     private final RestTemplate restTemplate;
-    private final SupabaseProps props;
+    private final String baseUrl;                 // https://<PROJECT_ID>.supabase.co
+    private final String apiKey;                  // service-role key
+    private final String bucket;                  // p.ex. "imagens"
+    private final boolean publicBucket;           // true => URL pública; false => assinada
+    private final int signedUrlExpSeconds;        // validade URL assinada
+    private final String cacheControl;            // ex.: "public, max-age=31536000, immutable"
 
     public SupabaseStorageService(SupabaseProps props) {
-        this.props = props;
+        // validações claras
+        if (!StringUtils.hasText(props.getUrl()) || !props.getUrl().startsWith("http")) {
+            throw new IllegalStateException("supabase.url inválida (ex.: https://<PROJECT_ID>.supabase.co)");
+        }
+        if (!StringUtils.hasText(props.getKey())) {
+            throw new IllegalStateException("supabase.key ausente (defina SUPABASE_SERVICE_ROLE_KEY ou --supabase.key=...)");
+        }
+        if (!StringUtils.hasText(props.getBucket())) {
+            throw new IllegalStateException("supabase.bucket ausente.");
+        }
 
-        // RestTemplate com timeouts para não travar requisições
+        this.baseUrl = props.getUrl().replaceAll("/+$", "");
+        this.apiKey = props.getKey();
+        this.bucket = props.getBucket();
+        this.publicBucket = props.isPublicBucket();
+        this.signedUrlExpSeconds = Math.max(1, props.getSignedUrlExpSeconds());
+        this.cacheControl = props.getCacheControl();
+
+        // RestTemplate com timeouts sensatos
         SimpleClientHttpRequestFactory rf = new SimpleClientHttpRequestFactory();
         rf.setConnectTimeout(8_000);
         rf.setReadTimeout(20_000);
         this.restTemplate = new RestTemplate(rf);
-
-        // Log leve (sem expor a key) – não derruba o app
-        log.info("Supabase cfg: url={}, bucket={}, publicBucket={}, exp={}",
-                safe(props.getUrl()), props.getBucket(), props.isPublicBucket(), props.getSignedUrlExpSeconds());
     }
 
     public UploadResponse uploadImage(MultipartFile file) {
-        // validação de configuração só aqui (na chamada), não no boot
-        assertConfigured();
-
         validateImage(file);
         String ext = getExtension(file.getOriginalFilename());
         String objectPath = buildObjectPath(ext);
 
         putObject(objectPath, file);
 
-        String url = props.isPublicBucket() ? publicUrl(objectPath) : signUrl(objectPath, props.getSignedUrlExpSeconds());
+        String url = publicBucket ? publicUrl(objectPath) : signUrl(objectPath, signedUrlExpSeconds);
         return new UploadResponse(url, objectPath);
     }
 
     /* =================== helpers =================== */
-
-    private void assertConfigured() {
-        if (!StringUtils.hasText(props.getUrl()) || !props.getUrl().startsWith("http")) {
-            throw new IllegalStateException("Configuração inválida: supabase.url (esperado: https://<PROJECT_ID>.supabase.co)");
-        }
-        if (!StringUtils.hasText(props.getKey())) {
-            throw new IllegalStateException("Configuração inválida: supabase.key (defina SUPABASE_SERVICE_ROLE_KEY ou --supabase.key=...)");
-        }
-        if (!StringUtils.hasText(props.getBucket())) {
-            throw new IllegalStateException("Configuração inválida: supabase.bucket");
-        }
-    }
 
     private String buildObjectPath(String ext) {
         int y = Instant.now().atZone(java.time.ZoneId.of("UTC")).getYear();
@@ -77,14 +75,15 @@ public class SupabaseStorageService {
     }
 
     private void putObject(String objectPath, MultipartFile file) {
+        if (!StringUtils.hasText(objectPath)) throw new IllegalArgumentException("objectPath vazio.");
         String encodedPath = encodePath(objectPath);
-        String url = normalizedBaseUrl() + "/storage/v1/object/" + props.getBucket() + "/" + encodedPath;
+        String url = baseUrl + "/storage/v1/object/" + bucket + "/" + encodedPath;
 
         HttpHeaders headers = commonHeaders();
         headers.set("x-upsert", "true");
         headers.setContentType(detectMediaType(file));
-        if (StringUtils.hasText(props.getCacheControl())) {
-            headers.set("Cache-Control", props.getCacheControl());
+        if (StringUtils.hasText(cacheControl)) {
+            headers.set("Cache-Control", cacheControl);
         }
 
         try {
@@ -104,17 +103,17 @@ public class SupabaseStorageService {
 
     private String publicUrl(String objectPath) {
         String encodedPath = encodePath(objectPath);
-        return normalizedBaseUrl() + "/storage/v1/object/public/" + props.getBucket() + "/" + encodedPath;
+        return baseUrl + "/storage/v1/object/public/" + bucket + "/" + encodedPath;
     }
 
     @SuppressWarnings("unchecked")
     private String signUrl(String objectPath, int expiresInSeconds) {
         String encodedPath = encodePath(objectPath);
-        String url = normalizedBaseUrl() + "/storage/v1/object/sign/" + props.getBucket() + "/" + encodedPath;
+        String url = baseUrl + "/storage/v1/object/sign/" + bucket + "/" + encodedPath;
 
         HttpHeaders headers = commonHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        String body = "{\"expiresIn\":" + Math.max(1, expiresInSeconds) + "}";
+        String body = "{\"expiresIn\":" + expiresInSeconds + "}";
 
         try {
             HttpEntity<String> entity = new HttpEntity<>(body, headers);
@@ -123,7 +122,7 @@ public class SupabaseStorageService {
                 throw new RuntimeException("Falha ao gerar URL assinada: status=" + resp.getStatusCode() + " body=" + resp.getBody());
             }
             String pathWithToken = String.valueOf(resp.getBody().get("signedURL")); // "/object/sign/..."
-            return normalizedBaseUrl() + "/storage/v1" + pathWithToken;
+            return baseUrl + "/storage/v1" + pathWithToken;
         } catch (RestClientResponseException e) {
             throw new RuntimeException("Sign falhou: HTTP %d, body=%s"
                     .formatted(e.getRawStatusCode(), e.getResponseBodyAsString()), e);
@@ -132,8 +131,8 @@ public class SupabaseStorageService {
 
     private HttpHeaders commonHeaders() {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("apikey", props.getKey());
-        headers.setBearerAuth(props.getKey());
+        headers.set("apikey", apiKey);
+        headers.setBearerAuth(apiKey);
         return headers;
     }
 
@@ -147,7 +146,7 @@ public class SupabaseStorageService {
                         "image/webp".equals(ct);
 
         if (!allowed && StringUtils.hasText(ct)) {
-            allowed = ct.startsWith("image/");
+            allowed = ct.startsWith("image/"); // fallback permissivo para variantes
         }
         if (!allowed) throw new IllegalArgumentException("Tipo de imagem não suportado: " + ct);
 
@@ -185,14 +184,5 @@ public class SupabaseStorageService {
             sb.append(URLEncoder.encode(parts[i], StandardCharsets.UTF_8));
         }
         return sb.toString();
-    }
-
-    private String normalizedBaseUrl() {
-        String url = props.getUrl();
-        return (url == null) ? "" : url.replaceAll("/+$", "");
-    }
-
-    private String safe(String v) {
-        return (v == null || v.isBlank()) ? "<vazio>" : v;
     }
 }
