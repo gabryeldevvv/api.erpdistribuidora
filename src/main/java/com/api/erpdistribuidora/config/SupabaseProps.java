@@ -1,16 +1,44 @@
 package com.api.erpdistribuidora.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
 
+@Component
 @ConfigurationProperties(prefix = "supabase")
 public class SupabaseProps {
-    private String url;                 // ex.: https://<PROJECT_ID>.supabase.co
-    private String key;                 // service role key (somente backend)
-    private String bucket;              // ex.: imagens
-    private boolean publicBucket = true;
-    private int signedUrlExpSeconds = 3600;
-    private String cacheControl = "";   // ex.: "public, max-age=31536000, immutable"
 
+    /**
+     * Ex.: https://<PROJECT_ID>.supabase.co
+     */
+    private String url;
+
+    /**
+     * Service role key (NÃO commitar). Ideal: vir de env -> SUPABASE_SERVICE_ROLE_KEY
+     */
+    private String key;
+
+    /**
+     * Nome do bucket de storage (ex.: "imagens")
+     */
+    private String bucket;
+
+    /**
+     * Se true, retorna URL pública; se false, gera URL assinada
+     */
+    private boolean publicBucket = true;
+
+    /**
+     * Expiração da URL assinada (em segundos)
+     */
+    private int signedUrlExpSeconds = 3600;
+
+    /**
+     * Cabeçalho Cache-Control para objetos (opcional)
+     * Ex.: "public, max-age=31536000, immutable"
+     */
+    private String cacheControl = "public, max-age=31536000, immutable";
+
+    // getters/setters
     public String getUrl() { return url; }
     public void setUrl(String url) { this.url = url; }
 

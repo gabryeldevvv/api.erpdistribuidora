@@ -2,14 +2,17 @@ package com.api.erpdistribuidora.service.storage;
 
 import com.api.erpdistribuidora.config.SupabaseProps;
 import com.api.erpdistribuidora.dto.UploadResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.*;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -31,6 +34,7 @@ public class SupabaseStorageService {
     private final String cacheControl;            // ex.: "public, max-age=31536000, immutable"
 
     public SupabaseStorageService(SupabaseProps props) {
+        // validações claras
         if (!StringUtils.hasText(props.getUrl()) || !props.getUrl().startsWith("http")) {
             throw new IllegalStateException("supabase.url inválida (ex.: https://<PROJECT_ID>.supabase.co)");
         }
@@ -42,23 +46,24 @@ public class SupabaseStorageService {
         }
 
         this.baseUrl = props.getUrl().replaceAll("/+$", "");
-        this.apiKey  = sanitizeAndValidateKey(props.getKey()); // <<=== IMPORTANTE
-        this.bucket  = props.getBucket();
+        this.apiKey = sanitizeAndValidateKey(props.getKey()); // << sanitiza/valida JWS
+        this.bucket = props.getBucket();
         this.publicBucket = props.isPublicBucket();
         this.signedUrlExpSeconds = Math.max(1, props.getSignedUrlExpSeconds());
         this.cacheControl = props.getCacheControl();
 
+        // RestTemplate com timeouts sensatos
         SimpleClientHttpRequestFactory rf = new SimpleClientHttpRequestFactory();
-        rf.setConnectTimeout(12_000); // um pouco mais tolerante
+        rf.setConnectTimeout(12_000); // +tolerância
         rf.setReadTimeout(30_000);
         this.restTemplate = new RestTemplate(rf);
 
         // Log seguro (não vaza segredo)
-        log.info("SupabaseStorageService inicializado: baseUrl={}, bucket={}, keyParts=3? {}",
+        log.info("SupabaseStorageService inicializado: baseUrl={}, bucket={}, keyPartsOK={}",
                 this.baseUrl, this.bucket, (this.apiKey.split("\\.").length == 3));
     }
 
-    public UploadResponse uploadImage(org.springframework.web.multipart.MultipartFile file) {
+    public UploadResponse uploadImage(MultipartFile file) {
         validateImage(file);
         String ext = getExtension(file.getOriginalFilename());
         String objectPath = buildObjectPath(ext);
@@ -73,11 +78,11 @@ public class SupabaseStorageService {
 
     private String sanitizeAndValidateKey(String raw) {
         String k = raw.trim().replace("\r", "").replace("\n", "");
-        // Alguns gerenciadores de segredo inserem aspas por engano
-        if (k.startsWith("\"") && k.endsWith("\"") && k.length() > 2) {
+        // Alguns gerenciadores de segredo inserem aspas acidentais
+        if (k.startsWith("\"") && k.endsWith("\"") && k.length() > 1) {
             k = k.substring(1, k.length() - 1);
         }
-        if (k.startsWith("'") && k.endsWith("'") && k.length() > 2) {
+        if (k.startsWith("'") && k.endsWith("'") && k.length() > 1) {
             k = k.substring(1, k.length() - 1);
         }
         // JWT/JWS "compact" deve ter 3 partes
@@ -95,7 +100,7 @@ public class SupabaseStorageService {
         return "images/%d/%02d/%s.%s".formatted(y, m, name, ext);
     }
 
-    private void putObject(String objectPath, org.springframework.web.multipart.MultipartFile file) {
+    private void putObject(String objectPath, MultipartFile file) {
         if (!StringUtils.hasText(objectPath)) throw new IllegalArgumentException("objectPath vazio.");
         String encodedPath = encodePath(objectPath);
         String url = baseUrl + "/storage/v1/object/" + bucket + "/" + encodedPath;
@@ -103,10 +108,10 @@ public class SupabaseStorageService {
         HttpHeaders headers = commonHeaders();
         headers.set("x-upsert", "true");
         headers.setContentType(detectMediaType(file));
+        headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
         if (StringUtils.hasText(cacheControl)) {
             headers.set("Cache-Control", cacheControl);
         }
-        headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
 
         try {
             byte[] bytes = file.getBytes();
@@ -116,16 +121,16 @@ public class SupabaseStorageService {
                 throw new RuntimeException("Falha no upload: " + resp.getStatusCode() + " body=" + resp.getBody());
             }
         } catch (RestClientResponseException e) {
-            // Resposta HTTP do Supabase (>=400) — mantém corpo
+            // Respostas HTTP do Supabase (>=400) – mantém corpo para debug
             throw new RuntimeException(
                     "Upload falhou: HTTP %d, body=%s".formatted(e.getRawStatusCode(), e.getResponseBodyAsString()), e);
         } catch (ResourceAccessException e) {
-            // DNS/timeout/SSL/firewall
+            // Problemas de rede/SSL/DNS/timeout
             throw new RuntimeException("Falha de conexão ao Supabase: " + e.getMessage(), e);
         } catch (RestClientException e) {
+            // Outras falhas do cliente REST
             throw new RuntimeException("Erro REST ao chamar Supabase: " + e.getMessage(), e);
         } catch (Exception e) {
-            // Inclui classe e msg para não ficar genérico
             throw new RuntimeException("Erro enviando arquivo ao Supabase: " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
         }
     }
@@ -170,7 +175,7 @@ public class SupabaseStorageService {
         return headers;
     }
 
-    private void validateImage(org.springframework.web.multipart.MultipartFile file) {
+    private void validateImage(MultipartFile file) {
         if (file == null || file.isEmpty()) throw new IllegalArgumentException("Arquivo vazio.");
         String ct = (file.getContentType() != null) ? file.getContentType().toLowerCase() : "";
 
@@ -180,7 +185,7 @@ public class SupabaseStorageService {
                         "image/webp".equals(ct);
 
         if (!allowed && StringUtils.hasText(ct)) {
-            allowed = ct.startsWith("image/"); // fallback para variantes
+            allowed = ct.startsWith("image/"); // fallback permissivo para variantes
         }
         if (!allowed) throw new IllegalArgumentException("Tipo de imagem não suportado: " + ct);
 
@@ -189,7 +194,7 @@ public class SupabaseStorageService {
         }
     }
 
-    private MediaType detectMediaType(org.springframework.web.multipart.MultipartFile file) {
+    private MediaType detectMediaType(MultipartFile file) {
         try {
             String ct = file.getContentType();
             if (StringUtils.hasText(ct)) return MediaType.parseMediaType(ct);
