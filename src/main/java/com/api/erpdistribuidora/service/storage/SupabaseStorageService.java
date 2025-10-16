@@ -1,15 +1,14 @@
 package com.api.erpdistribuidora.service.storage;
 
+import com.api.erpdistribuidora.config.SupabaseProps;
 import com.api.erpdistribuidora.dto.UploadResponse;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -21,40 +20,33 @@ import java.util.UUID;
 public class SupabaseStorageService {
 
     private final RestTemplate restTemplate;
-    private final String baseUrl;                 // ex: https://<PROJECT_ID>.supabase.co
-    private final String apiKey;                  // service-role key (NÃO expor no front)
-    private final String bucket;                  // ex: imagens
+    private final String baseUrl;                 // https://<PROJECT_ID>.supabase.co
+    private final String apiKey;                  // service-role key
+    private final String bucket;                  // p.ex. "imagens"
     private final boolean publicBucket;           // true => URL pública; false => assinada
-    private final int signedUrlExpSeconds;        // validade da URL assinada
-    private final String cacheControl;            // opcional para público
+    private final int signedUrlExpSeconds;        // validade URL assinada
+    private final String cacheControl;            // ex.: "public, max-age=31536000, immutable"
 
-    public SupabaseStorageService(
-            @Value("${supabase.url:}") String baseUrl,
-            @Value("${supabase.key:}") String apiKey,
-            @Value("${supabase.bucket:}") String bucket,
-            @Value("${supabase.public-bucket:true}") boolean publicBucket,
-            @Value("${supabase.signed-url-exp-seconds:3600}") int signedUrlExpSeconds,
-            @Value("${supabase.cache-control:}") String cacheControl
-    ) {
-        // validações fail-fast
-        if (!StringUtils.hasText(baseUrl) || !baseUrl.startsWith("http")) {
+    public SupabaseStorageService(SupabaseProps props) {
+        // validações claras
+        if (!StringUtils.hasText(props.getUrl()) || !props.getUrl().startsWith("http")) {
             throw new IllegalStateException("supabase.url inválida (ex.: https://<PROJECT_ID>.supabase.co)");
         }
-        if (!StringUtils.hasText(apiKey)) {
-            throw new IllegalStateException("supabase.key ausente. Defina SUPABASE_SERVICE_ROLE_KEY ou --supabase.key=...");
+        if (!StringUtils.hasText(props.getKey())) {
+            throw new IllegalStateException("supabase.key ausente (defina SUPABASE_SERVICE_ROLE_KEY ou --supabase.key=...)");
         }
-        if (!StringUtils.hasText(bucket)) {
+        if (!StringUtils.hasText(props.getBucket())) {
             throw new IllegalStateException("supabase.bucket ausente.");
         }
 
-        this.baseUrl = baseUrl.replaceAll("/+$", ""); // remove barras finais
-        this.apiKey = apiKey;
-        this.bucket = bucket;
-        this.publicBucket = publicBucket;
-        this.signedUrlExpSeconds = signedUrlExpSeconds;
-        this.cacheControl = cacheControl;
+        this.baseUrl = props.getUrl().replaceAll("/+$", "");
+        this.apiKey = props.getKey();
+        this.bucket = props.getBucket();
+        this.publicBucket = props.isPublicBucket();
+        this.signedUrlExpSeconds = Math.max(1, props.getSignedUrlExpSeconds());
+        this.cacheControl = props.getCacheControl();
 
-        // RestTemplate com timeouts
+        // RestTemplate com timeouts sensatos
         SimpleClientHttpRequestFactory rf = new SimpleClientHttpRequestFactory();
         rf.setConnectTimeout(8_000);
         rf.setReadTimeout(20_000);
@@ -63,7 +55,6 @@ public class SupabaseStorageService {
 
     public UploadResponse uploadImage(MultipartFile file) {
         validateImage(file);
-
         String ext = getExtension(file.getOriginalFilename());
         String objectPath = buildObjectPath(ext);
 
@@ -103,7 +94,6 @@ public class SupabaseStorageService {
                 throw new RuntimeException("Falha no upload: " + resp.getStatusCode() + " body=" + resp.getBody());
             }
         } catch (RestClientResponseException e) {
-            // traz status + body de erro do Supabase
             throw new RuntimeException("Upload falhou: HTTP %d, body=%s"
                     .formatted(e.getRawStatusCode(), e.getResponseBodyAsString()), e);
         } catch (Exception e) {
@@ -123,7 +113,7 @@ public class SupabaseStorageService {
 
         HttpHeaders headers = commonHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        String body = "{\"expiresIn\":" + Math.max(1, expiresInSeconds) + "}";
+        String body = "{\"expiresIn\":" + expiresInSeconds + "}";
 
         try {
             HttpEntity<String> entity = new HttpEntity<>(body, headers);
@@ -155,9 +145,8 @@ public class SupabaseStorageService {
                         "image/png".equals(ct)  || "image/gif".equals(ct) ||
                         "image/webp".equals(ct);
 
-        // fallback: aceitar se começar com "image/" quando alguns ambientes omitem o subtipo
         if (!allowed && StringUtils.hasText(ct)) {
-            allowed = ct.startsWith("image/");
+            allowed = ct.startsWith("image/"); // fallback permissivo para variantes
         }
         if (!allowed) throw new IllegalArgumentException("Tipo de imagem não suportado: " + ct);
 
@@ -171,7 +160,6 @@ public class SupabaseStorageService {
             String ct = file.getContentType();
             if (StringUtils.hasText(ct)) return MediaType.parseMediaType(ct);
         } catch (Exception ignored) {}
-        // fallback por extensão
         String ext = getExtension(file.getOriginalFilename());
         return switch (ext) {
             case "jpg", "jpeg" -> MediaType.IMAGE_JPEG;

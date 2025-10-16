@@ -6,9 +6,9 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+@CrossOrigin(origins = {"http://localhost:5173"}) // habilite se o front rodar em outra origem
 @RestController
 @RequestMapping("/api/files")
-@CrossOrigin(origins = {"http://localhost:5173"})
 public class FileController {
 
     private final SupabaseStorageService storageService;
