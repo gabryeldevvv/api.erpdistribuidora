@@ -6,7 +6,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-@CrossOrigin(origins = {"http://localhost:5173"}) // habilite se o front rodar em outra origem
+@CrossOrigin(origins = {"http://localhost:5173"}) // habilite se o front estiver em outra origem
 @RestController
 @RequestMapping("/api/files")
 public class FileController {

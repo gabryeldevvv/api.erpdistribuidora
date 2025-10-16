@@ -1,22 +1,15 @@
 package com.api.erpdistribuidora.config;
 
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.validation.annotation.Validated;
 
-@Validated
 @ConfigurationProperties(prefix = "supabase")
 public class SupabaseProps {
-    @NotBlank
-    private String url;          // ex.: https://<PROJECT_ID>.supabase.co
-    @NotBlank
-    private String key;          // service role key (somente backend)
-    @NotBlank
-    private String bucket;       // ex.: imagens
-
+    private String url;                 // ex.: https://<PROJECT_ID>.supabase.co
+    private String key;                 // service role key (somente backend)
+    private String bucket;              // ex.: imagens
     private boolean publicBucket = true;
     private int signedUrlExpSeconds = 3600;
-    private String cacheControl = "";  // ex.: "public, max-age=31536000, immutable"
+    private String cacheControl = "";   // ex.: "public, max-age=31536000, immutable"
 
     public String getUrl() { return url; }
     public void setUrl(String url) { this.url = url; }
