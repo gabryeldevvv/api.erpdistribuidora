@@ -2,13 +2,13 @@ package com.api.erpdistribuidora.controller;
 
 import com.api.erpdistribuidora.dto.UploadResponse;
 import com.api.erpdistribuidora.service.storage.SupabaseStorageService;
-import jakarta.validation.constraints.NotNull;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/files")
+@CrossOrigin(origins = {"http://localhost:5173"})
 public class FileController {
 
     private final SupabaseStorageService storageService;
@@ -18,7 +18,7 @@ public class FileController {
     }
 
     @PostMapping(value = "/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public UploadResponse upload(@RequestPart("file") @NotNull MultipartFile file) {
+    public UploadResponse upload(@RequestPart("file") MultipartFile file) {
         return storageService.uploadImage(file);
     }
 }

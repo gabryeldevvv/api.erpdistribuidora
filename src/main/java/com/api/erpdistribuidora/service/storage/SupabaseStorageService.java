@@ -4,9 +4,12 @@ import com.api.erpdistribuidora.dto.UploadResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -17,37 +20,52 @@ import java.util.UUID;
 @Service
 public class SupabaseStorageService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final String baseUrl;
-    private final String apiKey;
-    private final String bucket;
-    private final boolean publicBucket;
-    private final int signedUrlExpSeconds;
+    private final RestTemplate restTemplate;
+    private final String baseUrl;                 // ex: https://<PROJECT_ID>.supabase.co
+    private final String apiKey;                  // service-role key (NÃO expor no front)
+    private final String bucket;                  // ex: imagens
+    private final boolean publicBucket;           // true => URL pública; false => assinada
+    private final int signedUrlExpSeconds;        // validade da URL assinada
+    private final String cacheControl;            // opcional para público
 
     public SupabaseStorageService(
-            @Value("${supabase.url}") String baseUrl,
-            @Value("${supabase.key}") String apiKey,
-            @Value("${supabase.bucket}") String bucket,
+            @Value("${supabase.url:}") String baseUrl,
+            @Value("${supabase.key:}") String apiKey,
+            @Value("${supabase.bucket:}") String bucket,
             @Value("${supabase.public-bucket:true}") boolean publicBucket,
-            @Value("${supabase.signed-url-exp-seconds:3600}") int signedUrlExpSeconds
+            @Value("${supabase.signed-url-exp-seconds:3600}") int signedUrlExpSeconds,
+            @Value("${supabase.cache-control:}") String cacheControl
     ) {
-        this.baseUrl = baseUrl;
+        // validações fail-fast
+        if (!StringUtils.hasText(baseUrl) || !baseUrl.startsWith("http")) {
+            throw new IllegalStateException("supabase.url inválida (ex.: https://<PROJECT_ID>.supabase.co)");
+        }
+        if (!StringUtils.hasText(apiKey)) {
+            throw new IllegalStateException("supabase.key ausente. Defina SUPABASE_SERVICE_ROLE_KEY ou --supabase.key=...");
+        }
+        if (!StringUtils.hasText(bucket)) {
+            throw new IllegalStateException("supabase.bucket ausente.");
+        }
+
+        this.baseUrl = baseUrl.replaceAll("/+$", ""); // remove barras finais
         this.apiKey = apiKey;
         this.bucket = bucket;
         this.publicBucket = publicBucket;
         this.signedUrlExpSeconds = signedUrlExpSeconds;
+        this.cacheControl = cacheControl;
+
+        // RestTemplate com timeouts
+        SimpleClientHttpRequestFactory rf = new SimpleClientHttpRequestFactory();
+        rf.setConnectTimeout(8_000);
+        rf.setReadTimeout(20_000);
+        this.restTemplate = new RestTemplate(rf);
     }
 
     public UploadResponse uploadImage(MultipartFile file) {
         validateImage(file);
 
         String ext = getExtension(file.getOriginalFilename());
-        String objectPath = "images/%d/%02d/%s.%s".formatted(
-                Instant.now().atZone(java.time.ZoneId.of("UTC")).getYear(),
-                Instant.now().atZone(java.time.ZoneId.of("UTC")).getMonthValue(),
-                UUID.randomUUID(),
-                ext
-        );
+        String objectPath = buildObjectPath(ext);
 
         putObject(objectPath, file);
 
@@ -57,21 +75,37 @@ public class SupabaseStorageService {
 
     /* =================== helpers =================== */
 
+    private String buildObjectPath(String ext) {
+        int y = Instant.now().atZone(java.time.ZoneId.of("UTC")).getYear();
+        int m = Instant.now().atZone(java.time.ZoneId.of("UTC")).getMonthValue();
+        if (!StringUtils.hasText(ext)) ext = "bin";
+        String name = UUID.randomUUID().toString();
+        return "images/%d/%02d/%s.%s".formatted(y, m, name, ext);
+    }
+
     private void putObject(String objectPath, MultipartFile file) {
+        if (!StringUtils.hasText(objectPath)) throw new IllegalArgumentException("objectPath vazio.");
         String encodedPath = encodePath(objectPath);
         String url = baseUrl + "/storage/v1/object/" + bucket + "/" + encodedPath;
 
         HttpHeaders headers = commonHeaders();
         headers.set("x-upsert", "true");
         headers.setContentType(detectMediaType(file));
+        if (StringUtils.hasText(cacheControl)) {
+            headers.set("Cache-Control", cacheControl);
+        }
 
         try {
             byte[] bytes = file.getBytes();
             HttpEntity<byte[]> entity = new HttpEntity<>(bytes, headers);
             ResponseEntity<String> resp = restTemplate.exchange(url, HttpMethod.PUT, entity, String.class);
             if (!resp.getStatusCode().is2xxSuccessful()) {
-                throw new RuntimeException("Falha no upload: " + resp.getStatusCode());
+                throw new RuntimeException("Falha no upload: " + resp.getStatusCode() + " body=" + resp.getBody());
             }
+        } catch (RestClientResponseException e) {
+            // traz status + body de erro do Supabase
+            throw new RuntimeException("Upload falhou: HTTP %d, body=%s"
+                    .formatted(e.getRawStatusCode(), e.getResponseBodyAsString()), e);
         } catch (Exception e) {
             throw new RuntimeException("Erro enviando arquivo ao Supabase", e);
         }
@@ -89,15 +123,20 @@ public class SupabaseStorageService {
 
         HttpHeaders headers = commonHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        String body = "{\"expiresIn\":" + expiresInSeconds + "}";
+        String body = "{\"expiresIn\":" + Math.max(1, expiresInSeconds) + "}";
 
-        HttpEntity<String> entity = new HttpEntity<>(body, headers);
-        ResponseEntity<Map> resp = restTemplate.postForEntity(url, entity, Map.class);
-        if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null || !resp.getBody().containsKey("signedURL")) {
-            throw new RuntimeException("Falha ao gerar URL assinada");
+        try {
+            HttpEntity<String> entity = new HttpEntity<>(body, headers);
+            ResponseEntity<Map> resp = restTemplate.postForEntity(url, entity, Map.class);
+            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null || !resp.getBody().containsKey("signedURL")) {
+                throw new RuntimeException("Falha ao gerar URL assinada: status=" + resp.getStatusCode() + " body=" + resp.getBody());
+            }
+            String pathWithToken = String.valueOf(resp.getBody().get("signedURL")); // "/object/sign/..."
+            return baseUrl + "/storage/v1" + pathWithToken;
+        } catch (RestClientResponseException e) {
+            throw new RuntimeException("Sign falhou: HTTP %d, body=%s"
+                    .formatted(e.getRawStatusCode(), e.getResponseBodyAsString()), e);
         }
-        String pathWithToken = (String) resp.getBody().get("signedURL"); // retorna "/object/sign/..."
-        return baseUrl + "/storage/v1" + pathWithToken;
     }
 
     private HttpHeaders commonHeaders() {
@@ -109,19 +148,18 @@ public class SupabaseStorageService {
 
     private void validateImage(MultipartFile file) {
         if (file == null || file.isEmpty()) throw new IllegalArgumentException("Arquivo vazio.");
+        String ct = (file.getContentType() != null) ? file.getContentType().toLowerCase() : "";
 
-        String ct = file.getContentType();
-        if (!StringUtils.hasText(ct)) throw new IllegalArgumentException("Content-Type ausente.");
-        String ctL = ct.toLowerCase();
+        boolean allowed =
+                "image/jpeg".equals(ct) || "image/jpg".equals(ct) ||
+                        "image/png".equals(ct)  || "image/gif".equals(ct) ||
+                        "image/webp".equals(ct);
 
-        boolean ok =
-                ctL.equals("image/jpeg") ||
-                        ctL.equals("image/jpg")  ||
-                        ctL.equals("image/png")  ||
-                        ctL.equals("image/gif")  ||
-                        ctL.equals("image/webp");
-
-        if (!ok) throw new IllegalArgumentException("Tipo de imagem não suportado: " + ct);
+        // fallback: aceitar se começar com "image/" quando alguns ambientes omitem o subtipo
+        if (!allowed && StringUtils.hasText(ct)) {
+            allowed = ct.startsWith("image/");
+        }
+        if (!allowed) throw new IllegalArgumentException("Tipo de imagem não suportado: " + ct);
 
         if (file.getSize() > 10 * 1024 * 1024) {
             throw new IllegalArgumentException("Imagem maior que 10MB.");
@@ -129,18 +167,28 @@ public class SupabaseStorageService {
     }
 
     private MediaType detectMediaType(MultipartFile file) {
-        try { return MediaType.parseMediaType(file.getContentType()); }
-        catch (Exception e) { return MediaType.APPLICATION_OCTET_STREAM; }
+        try {
+            String ct = file.getContentType();
+            if (StringUtils.hasText(ct)) return MediaType.parseMediaType(ct);
+        } catch (Exception ignored) {}
+        // fallback por extensão
+        String ext = getExtension(file.getOriginalFilename());
+        return switch (ext) {
+            case "jpg", "jpeg" -> MediaType.IMAGE_JPEG;
+            case "png"        -> MediaType.IMAGE_PNG;
+            case "gif"        -> MediaType.IMAGE_GIF;
+            case "webp"       -> MediaType.parseMediaType("image/webp");
+            default           -> MediaType.APPLICATION_OCTET_STREAM;
+        };
     }
 
     private String getExtension(String filename) {
-        if (!StringUtils.hasText(filename) || !filename.contains(".")) return "bin";
+        if (!StringUtils.hasText(filename) || !filename.contains(".")) return "";
         String ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
         return "jpeg".equals(ext) ? "jpg" : ext;
     }
 
     private String encodePath(String path) {
-        // preserva '/' e escapa caracteres especiais por segmento
         String[] parts = path.split("/");
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < parts.length; i++) {
