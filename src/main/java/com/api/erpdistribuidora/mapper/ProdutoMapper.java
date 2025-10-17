@@ -1,3 +1,4 @@
+// src/main/java/com/api/erpdistribuidora/mapper/ProdutoMapper.java
 package com.api.erpdistribuidora.mapper;
 
 import com.api.erpdistribuidora.dto.ProdutoRequestDTO;
@@ -20,6 +21,7 @@ public class ProdutoMapper {
                 .unidadeMedida(dto.getUnidadeMedida())
                 .dataValidade(dto.getDataValidade())
                 .ativo(dto.getAtivo() != null ? dto.getAtivo() : true)
+                // categoria será resolvida/validada na Service
                 .build();
     }
 
@@ -34,6 +36,7 @@ public class ProdutoMapper {
                 .dataValidade(entity.getDataValidade())
                 .dataCadastro(entity.getDataCadastro())
                 .ativo(entity.isAtivo())
+                .idCategoria(entity.getCategoria() != null ? entity.getCategoria().getId() : null)
                 .build();
     }
 

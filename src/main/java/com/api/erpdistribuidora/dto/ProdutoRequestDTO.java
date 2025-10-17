@@ -1,3 +1,4 @@
+// src/main/java/com/api/erpdistribuidora/dto/ProdutoRequestDTO.java
 package com.api.erpdistribuidora.dto;
 
 import lombok.*;
@@ -17,7 +18,7 @@ public class ProdutoRequestDTO {
     private String descricao;
 
     @NotNull(message = "precoUnitario é obrigatório")
-    @DecimalMin(value = "0.01", inclusive = true, message = "precoUnitario deve ser > 0")
+    @DecimalMin(value = "0.01", message = "precoUnitario deve ser maior que zero")
     private BigDecimal precoUnitario;
 
     @NotBlank(message = "unidadeMedida é obrigatória")
@@ -26,6 +27,10 @@ public class ProdutoRequestDTO {
 
     private LocalDate dataValidade;
 
-    // opcional, default true na entidade
+    // opcional; default true na entidade
     private Boolean ativo;
+
+    // >>> ADIÇÃO: id da categoria a ser vinculada ao produto
+    // (validado na Service para garantir que não seja Departamento)
+    private Long idCategoria;
 }

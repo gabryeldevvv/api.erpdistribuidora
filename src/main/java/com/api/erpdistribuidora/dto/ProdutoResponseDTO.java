@@ -1,3 +1,4 @@
+// src/main/java/com/api/erpdistribuidora/dto/ProdutoResponseDTO.java
 package com.api.erpdistribuidora.dto;
 
 import lombok.*;
@@ -16,6 +17,8 @@ public class ProdutoResponseDTO {
     private String unidadeMedida;
     private LocalDate dataValidade;
     private LocalDateTime dataCadastro;
-    private Boolean ativo;
-}
+    private boolean ativo;
 
+    // >>> ADIÇÃO: refletir FK de categoria
+    private Long idCategoria;
+}

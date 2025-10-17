@@ -1,3 +1,4 @@
+// src/main/java/com/api/erpdistribuidora/model/Produto.java
 package com.api.erpdistribuidora.model;
 
 import jakarta.persistence.*;
@@ -44,6 +45,11 @@ public class Produto {
     @Builder.Default
     @Column(nullable = false)
     private boolean ativo = true;
+
+    // >>> ADIÇÃO: vínculo direto do produto com categoria
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_categoria", foreignKey = @ForeignKey(name = "produto_id_categoria_fkey"))
+    private Categoria categoria;
 
     @OneToMany(mappedBy = "produto")
     private List<Estoque> estoques;
