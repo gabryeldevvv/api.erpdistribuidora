@@ -240,4 +240,27 @@ public class SupabaseStorageService {
         }
         return sb.toString();
     }
+
+    public boolean deleteImage(String path) {
+        try {
+            // Ajuste se sua classe já tiver helpers para montar URL/headers
+            String endpoint = props.getUrl() + "/storage/v1/object/"
+                    + URLEncoder.encode(props.getBucket(), StandardCharsets.UTF_8) + "/"
+                    + URLEncoder.encode(path, StandardCharsets.UTF_8);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "Bearer " + props.getServiceRoleKey());
+            headers.set("apikey", props.getServiceRoleKey());
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            ResponseEntity<Void> resp = restTemplate.exchange(endpoint, HttpMethod.DELETE, entity, Void.class);
+            return resp.getStatusCode().is2xxSuccessful();
+        } catch (RestClientResponseException e) {
+            log.error("Delete falhou ({}): {}", path, e.getResponseBodyAsString(), e);
+            return false;
+        } catch (RestClientException e) {
+            log.error("Delete falhou (erro genérico) para {}", path, e);
+            return false;
+        }
+    }
 }

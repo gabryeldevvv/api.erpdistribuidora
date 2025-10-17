@@ -52,4 +52,18 @@ public class Produto {
 
     @OneToMany(mappedBy = "produto")
     private List<MovimentacaoEstoque> movimentacoes;
+
+    @OneToMany(mappedBy = "produto", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ProdutoImagem> imagens = new ArrayList<>();
+
+    public void addImagem(ProdutoImagem img) {
+        imagens.add(img);
+        img.setProduto(this);
+    }
+
+    public void removeImagem(ProdutoImagem img) {
+        imagens.remove(img);
+        img.setProduto(null);
+    }
 }
