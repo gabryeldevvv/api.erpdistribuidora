@@ -21,7 +21,7 @@ public class ProdutoImagemController {
     // - part "metadata" (JSON: { "produtoId": 123, "nome": "Frente" } ) - opcional
     @PostMapping(value = "/{produtoId}/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ImagemResponse upload(
-            @PathVariable("produtoId") Integer produtoId,
+            @PathVariable("produtoId") Long produtoId,
             @RequestPart("file") MultipartFile file,
             @RequestPart(value = "metadata", required = false) ImagemRequest metadata
     ) {

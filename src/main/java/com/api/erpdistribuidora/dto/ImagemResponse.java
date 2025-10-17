@@ -5,5 +5,5 @@ public record ImagemResponse(
         String nome,
         String url,
         String path,
-        Integer produtoId
+        Long produtoId
 ) {}

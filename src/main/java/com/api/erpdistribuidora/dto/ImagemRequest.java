@@ -1,6 +1,6 @@
 package com.api.erpdistribuidora.dto;
 
 public record ImagemRequest(
-        Integer produtoId,
+        Long produtoId,
         String nome
 ) {}

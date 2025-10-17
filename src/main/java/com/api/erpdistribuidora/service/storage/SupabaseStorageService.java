@@ -21,6 +21,7 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 
+
 @Service
 public class SupabaseStorageService {
 
@@ -29,10 +30,18 @@ public class SupabaseStorageService {
     private final RestTemplate restTemplate;
     private final String baseUrl;                 // https://<PROJECT_ID>.supabase.co
     private final String apiKey;                  // service-role key (sanitizada e validada)
-    private final String bucket;                  // p.ex. "imagens"
     private final boolean publicBucket;           // true => URL pública; false => assinada
     private final int signedUrlExpSeconds;        // validade URL assinada
     private final String cacheControl;            // ex.: "public, max-age=31536000, immutable"
+
+    @org.springframework.beans.factory.annotation.Value("${supabase.url}")
+    private String supabaseUrl;
+
+    @org.springframework.beans.factory.annotation.Value("${supabase.bucket}")
+    private String bucket;
+
+    @org.springframework.beans.factory.annotation.Value("${supabase.serviceRoleKey}")
+    private String serviceRoleKey;
 
     public SupabaseStorageService(SupabaseProps props) {
         // validações claras
@@ -243,24 +252,29 @@ public class SupabaseStorageService {
 
     public boolean deleteImage(String path) {
         try {
-            // Ajuste se sua classe já tiver helpers para montar URL/headers
-            String endpoint = props.getUrl() + "/storage/v1/object/"
-                    + URLEncoder.encode(props.getBucket(), StandardCharsets.UTF_8) + "/"
-                    + URLEncoder.encode(path, StandardCharsets.UTF_8);
+            String endpoint = this.supabaseUrl
+                    + "/storage/v1/object/"
+                    + java.net.URLEncoder.encode(this.bucket, java.nio.charset.StandardCharsets.UTF_8)
+                    + "/"
+                    + java.net.URLEncoder.encode(path, java.nio.charset.StandardCharsets.UTF_8);
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Bearer " + props.getServiceRoleKey());
-            headers.set("apikey", props.getServiceRoleKey());
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            // Para DELETE use a Service Role Key
+            headers.set("Authorization", "Bearer " + this.serviceRoleKey);
+            headers.set("apikey", this.serviceRoleKey);
 
-            HttpEntity<Void> entity = new HttpEntity<>(headers);
-            ResponseEntity<Void> resp = restTemplate.exchange(endpoint, HttpMethod.DELETE, entity, Void.class);
+            org.springframework.http.HttpEntity<Void> entity = new org.springframework.http.HttpEntity<>(headers);
+            org.springframework.http.ResponseEntity<Void> resp =
+                    this.restTemplate.exchange(endpoint, org.springframework.http.HttpMethod.DELETE, entity, Void.class);
+
             return resp.getStatusCode().is2xxSuccessful();
-        } catch (RestClientResponseException e) {
+        } catch (org.springframework.web.client.RestClientResponseException e) {
             log.error("Delete falhou ({}): {}", path, e.getResponseBodyAsString(), e);
             return false;
-        } catch (RestClientException e) {
+        } catch (org.springframework.web.client.RestClientException e) {
             log.error("Delete falhou (erro genérico) para {}", path, e);
             return false;
         }
     }
+
 }
