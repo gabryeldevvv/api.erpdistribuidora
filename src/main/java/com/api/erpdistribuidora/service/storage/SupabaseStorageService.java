@@ -250,30 +250,24 @@ public class SupabaseStorageService {
         return sb.toString();
     }
 
+    // dentro de SupabaseStorageService (sem mexer no que já existe)
     public boolean deleteImage(String path) {
+        if (path == null || path.isBlank()) return false;
         try {
-            String endpoint = this.supabaseUrl
-                    + "/storage/v1/object/"
-                    + java.net.URLEncoder.encode(this.bucket, java.nio.charset.StandardCharsets.UTF_8)
-                    + "/"
-                    + java.net.URLEncoder.encode(path, java.nio.charset.StandardCharsets.UTF_8);
+            String endpoint = baseUrl + "/storage/v1/object/" + bucket + "/" + encodePath(path);
 
-            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-            // Para DELETE use a Service Role Key
-            headers.set("Authorization", "Bearer " + this.serviceRoleKey);
-            headers.set("apikey", this.serviceRoleKey);
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "Bearer " + apiKey); // sua apiKey já é service_role
+            headers.set("apikey", apiKey);
 
-            org.springframework.http.HttpEntity<Void> entity = new org.springframework.http.HttpEntity<>(headers);
-            org.springframework.http.ResponseEntity<Void> resp =
-                    this.restTemplate.exchange(endpoint, org.springframework.http.HttpMethod.DELETE, entity, Void.class);
-
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            ResponseEntity<Void> resp = restTemplate.exchange(endpoint, HttpMethod.DELETE, entity, Void.class);
             return resp.getStatusCode().is2xxSuccessful();
-        } catch (org.springframework.web.client.RestClientResponseException e) {
-            log.error("Delete falhou ({}): {}", path, e.getResponseBodyAsString(), e);
-            return false;
-        } catch (org.springframework.web.client.RestClientException e) {
-            log.error("Delete falhou (erro genérico) para {}", path, e);
-            return false;
+        } catch (RestClientResponseException e) {
+            throw new RuntimeException("Delete falhou: HTTP %d, body=%s"
+                    .formatted(e.getRawStatusCode(), e.getResponseBodyAsString()), e);
+        } catch (RestClientException e) {
+            throw new RuntimeException("Erro REST ao deletar no Supabase: " + e.getMessage(), e);
         }
     }
 
