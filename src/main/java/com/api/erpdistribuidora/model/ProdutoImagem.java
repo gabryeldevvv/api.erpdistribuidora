@@ -1,68 +1,44 @@
-package com.api.erpdistribuidora.service;
+package com.api.erpdistribuidora.model;
 
-import com.api.erpdistribuidora.dto.ImagemRequest;
-import com.api.erpdistribuidora.dto.ImagemResponse;
-import com.api.erpdistribuidora.dto.UploadResponse;
-import com.api.erpdistribuidora.model.Produto;
-import com.api.erpdistribuidora.model.ProdutoImagem;
-import com.api.erpdistribuidora.repository.ProdutoImagemRepository;
-import com.api.erpdistribuidora.repository.ProdutoRepository;
-import com.api.erpdistribuidora.service.storage.SupabaseStorageService;
-import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
+import jakarta.persistence.*;
+import lombok.*;
 
-@Service
-@RequiredArgsConstructor
-public class ProdutoImagemService {
+import java.time.LocalDateTime;
 
-    private final ProdutoRepository produtoRepository;
-    private final ProdutoImagemRepository imagemRepository;
-    private final SupabaseStorageService storage;
+@Entity
+@Table(name = "produto_imagem", schema = "public")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ProdutoImagem {
 
-    @Transactional
-    public ImagemResponse criar(MultipartFile file, ImagemRequest req) {
-        Produto produto = produtoRepository.findById(req.produtoId())
-                .orElseThrow(() -> new EntityNotFoundException("Produto não encontrado"));
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_imagem")
+    private Integer id;
 
-        UploadResponse up = storage.uploadImage(file); // mantém seu método existente
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "id_produto", nullable = false)
+    private Produto produto;
 
-        String nome = (req.nome() != null && !req.nome().isBlank())
-                ? req.nome()
-                : (file.getOriginalFilename() != null ? file.getOriginalFilename() : "imagem");
+    @Column(name = "nome", nullable = false)
+    private String nome;
 
-        if (up.path() == null || up.path().isBlank()) {
-            throw new IllegalStateException("Upload retornou path vazio/nulo");
+    @Column(name = "url", nullable = false)
+    private String url;
+
+    @Column(name = "path", nullable = false)
+    private String path;
+
+    @Column(name = "criado_em", updatable = false)
+    private LocalDateTime criadoEm;
+
+    @PrePersist
+    public void prePersist() {
+        if (criadoEm == null) {
+            criadoEm = LocalDateTime.now();
         }
-
-        ProdutoImagem entity = ProdutoImagem.builder()
-                .produto(produto)
-                .nome(nome)
-                .url(up.url())
-                .path(up.path())
-                .build();
-
-        entity = imagemRepository.saveAndFlush(entity);
-
-        return new ImagemResponse(
-                entity.getId(),
-                entity.getNome(),
-                entity.getUrl(),
-                entity.getPath(),
-                produto.getId()
-        );
-    }
-
-    @Transactional
-    public void deletar(Integer imagemId) {
-        ProdutoImagem img = imagemRepository.findById(imagemId)
-                .orElseThrow(() -> new EntityNotFoundException("Imagem não encontrada"));
-
-        boolean ok = storage.deleteImage(img.getPath());
-        if (!ok) throw new IllegalStateException("Falha ao apagar arquivo no storage");
-
-        imagemRepository.delete(img);
     }
 }

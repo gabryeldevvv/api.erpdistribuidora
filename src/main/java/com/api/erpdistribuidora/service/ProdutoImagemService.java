@@ -27,12 +27,15 @@ public class ProdutoImagemService {
         Produto produto = produtoRepository.findById(req.produtoId())
                 .orElseThrow(() -> new EntityNotFoundException("Produto não encontrado"));
 
-        // Mantém seu upload atual (não altero assinatura existente).
-        UploadResponse up = storage.uploadImage(file); // precisa retornar url + path
+        UploadResponse up = storage.uploadImage(file); // mantém seu método existente
 
         String nome = (req.nome() != null && !req.nome().isBlank())
                 ? req.nome()
                 : (file.getOriginalFilename() != null ? file.getOriginalFilename() : "imagem");
+
+        if (up.path() == null || up.path().isBlank()) {
+            throw new IllegalStateException("Upload retornou path vazio/nulo");
+        }
 
         ProdutoImagem entity = ProdutoImagem.builder()
                 .produto(produto)
@@ -57,13 +60,9 @@ public class ProdutoImagemService {
         ProdutoImagem img = imagemRepository.findById(imagemId)
                 .orElseThrow(() -> new EntityNotFoundException("Imagem não encontrada"));
 
-        // 1) apaga o arquivo no storage (usa método novo adicionado ao SupabaseStorageService)
         boolean ok = storage.deleteImage(img.getPath());
-        if (!ok) {
-            throw new IllegalStateException("Falha ao apagar arquivo no storage");
-        }
+        if (!ok) throw new IllegalStateException("Falha ao apagar arquivo no storage");
 
-        // 2) apaga o registro no banco
         imagemRepository.delete(img);
     }
 }
