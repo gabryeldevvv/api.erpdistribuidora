@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,7 +28,7 @@ public class SupabaseStorageService {
 
     private final RestTemplate restTemplate;
     private final String baseUrl;                 // https://<PROJECT_ID>.supabase.co
-    private final String apiKey;                  // service-role key (sanitizada)
+    private final String apiKey;                  // service-role key (sanitizada e validada)
     private final String bucket;                  // p.ex. "imagens"
     private final boolean publicBucket;           // true => URL pública; false => assinada
     private final int signedUrlExpSeconds;        // validade URL assinada
@@ -38,15 +39,15 @@ public class SupabaseStorageService {
         if (!StringUtils.hasText(props.getUrl()) || !props.getUrl().startsWith("http")) {
             throw new IllegalStateException("supabase.url inválida (ex.: https://<PROJECT_ID>.supabase.co)");
         }
-        if (!StringUtils.hasText(props.getKey())) {
-            throw new IllegalStateException("supabase.key ausente (defina SUPABASE_SERVICE_ROLE_KEY ou --supabase.key=...)");
+        if (!StringUtils.hasText(props.getServiceRoleKey())) {
+            throw new IllegalStateException("supabase.serviceRoleKey ausente (defina SUPABASE_SERVICE_ROLE_KEY ou --supabase.serviceRoleKey=...)");
         }
         if (!StringUtils.hasText(props.getBucket())) {
             throw new IllegalStateException("supabase.bucket ausente.");
         }
 
         this.baseUrl = props.getUrl().replaceAll("/+$", "");
-        this.apiKey = sanitizeAndValidateKey(props.getKey()); // << sanitiza/valida JWS
+        this.apiKey = ensureServiceRole(sanitizeAndValidateKey(props.getServiceRoleKey())); // valida que é service_role
         this.bucket = props.getBucket();
         this.publicBucket = props.isPublicBucket();
         this.signedUrlExpSeconds = Math.max(1, props.getSignedUrlExpSeconds());
@@ -59,8 +60,8 @@ public class SupabaseStorageService {
         this.restTemplate = new RestTemplate(rf);
 
         // Log seguro (não vaza segredo)
-        log.info("SupabaseStorageService inicializado: baseUrl={}, bucket={}, keyPartsOK={}",
-                this.baseUrl, this.bucket, (this.apiKey.split("\\.").length == 3));
+        log.info("SupabaseStorageService inicializado: baseUrl={}, bucket={}, jwtParts={}",
+                this.baseUrl, this.bucket, (this.apiKey.split("\\.").length));
     }
 
     public UploadResponse uploadImage(MultipartFile file) {
@@ -87,9 +88,24 @@ public class SupabaseStorageService {
         }
         // JWT/JWS "compact" deve ter 3 partes
         if (k.split("\\.").length != 3) {
-            throw new IllegalStateException("supabase.key com formato inválido (esperado JWS em 3 partes).");
+            throw new IllegalStateException("supabase.serviceRoleKey com formato inválido (esperado JWS em 3 partes).");
         }
         return k;
+    }
+
+    private String ensureServiceRole(String key) {
+        String[] parts = key.split("\\.");
+        if (parts.length != 3) {
+            throw new IllegalStateException("JWT inválido (esperado 3 partes).");
+        }
+        String payloadJson = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
+        // service role tem claim: "role":"service_role"
+        if (!payloadJson.contains("\"role\":\"service_role\"")) {
+            throw new IllegalStateException(
+                    "A chave fornecida NÃO é service_role. Payload detectado: " + payloadJson
+            );
+        }
+        return key;
     }
 
     private String buildObjectPath(String ext) {

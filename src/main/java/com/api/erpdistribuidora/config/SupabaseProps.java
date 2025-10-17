@@ -1,7 +1,6 @@
 package com.api.erpdistribuidora.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 @ConfigurationProperties(prefix = "supabase")
 public class SupabaseProps {
@@ -12,9 +11,10 @@ public class SupabaseProps {
     private String url;
 
     /**
-     * Service role key (NÃO commitar). Ideal: vir de env -> SUPABASE_SERVICE_ROLE_KEY
+     * Service role key (NÃO commitar).
+     * Ideal: vir de env -> SUPABASE_SERVICE_ROLE_KEY
      */
-    private String key;
+    private String serviceRoleKey;
 
     /**
      * Nome do bucket de storage (ex.: "imagens")
@@ -37,12 +37,12 @@ public class SupabaseProps {
      */
     private String cacheControl = "public, max-age=31536000, immutable";
 
-    // getters/setters
+    // ===== getters/setters =====
     public String getUrl() { return url; }
     public void setUrl(String url) { this.url = url; }
 
-    public String getKey() { return key; }
-    public void setKey(String key) { this.key = key; }
+    public String getServiceRoleKey() { return serviceRoleKey; }
+    public void setServiceRoleKey(String serviceRoleKey) { this.serviceRoleKey = serviceRoleKey; }
 
     public String getBucket() { return bucket; }
     public void setBucket(String bucket) { this.bucket = bucket; }
@@ -55,4 +55,17 @@ public class SupabaseProps {
 
     public String getCacheControl() { return cacheControl; }
     public void setCacheControl(String cacheControl) { this.cacheControl = cacheControl; }
+
+    // ===== Compatibilidade opcional com "supabase.key" =====
+    /**
+     * @deprecated use {@link #getServiceRoleKey()}
+     */
+    @Deprecated
+    public String getKey() { return serviceRoleKey; }
+
+    /**
+     * @deprecated use {@link #setServiceRoleKey(String)}
+     */
+    @Deprecated
+    public void setKey(String key) { this.serviceRoleKey = key; }
 }
