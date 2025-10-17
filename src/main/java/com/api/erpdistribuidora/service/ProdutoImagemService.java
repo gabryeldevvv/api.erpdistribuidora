@@ -41,7 +41,7 @@ public class ProdutoImagemService {
                 .path(up.path())
                 .build();
 
-        entity = imagemRepository.save(entity);
+        entity = imagemRepository.saveAndFlush(entity);
 
         return new ImagemResponse(
                 entity.getId(),

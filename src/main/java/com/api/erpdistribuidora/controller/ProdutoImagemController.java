@@ -37,7 +37,7 @@ public class ProdutoImagemController {
 
     @DeleteMapping("/{produtoId}/imagens/{imagemId}")
     public void delete(
-            @PathVariable("produtoId") Integer produtoId,
+            @PathVariable("produtoId") Long produtoId,
             @PathVariable("imagemId") Integer imagemId
     ) {
         service.deletar(imagemId);
