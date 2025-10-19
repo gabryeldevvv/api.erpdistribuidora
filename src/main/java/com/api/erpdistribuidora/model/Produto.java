@@ -1,6 +1,7 @@
 // src/main/java/com/api/erpdistribuidora/model/Produto.java
 package com.api.erpdistribuidora.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -20,6 +21,7 @@ public class Produto {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @JsonProperty("idCategoria")
     @Column(name = "id_produto")
     private Long id;
 
