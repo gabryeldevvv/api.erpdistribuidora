@@ -1,7 +1,6 @@
 // src/main/java/com/api/erpdistribuidora/model/Produto.java
 package com.api.erpdistribuidora.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -49,7 +48,6 @@ public class Produto {
 
     // >>> ADIÇÃO: vínculo direto do produto com categoria
     @ManyToOne(fetch = FetchType.LAZY)
-    @JsonProperty("idCategoria")
     @JoinColumn(name = "id_categoria", foreignKey = @ForeignKey(name = "produto_id_categoria_fkey"))
     private Categoria categoria;
 

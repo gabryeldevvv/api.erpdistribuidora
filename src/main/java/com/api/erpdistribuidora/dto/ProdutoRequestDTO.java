@@ -1,6 +1,7 @@
 // src/main/java/com/api/erpdistribuidora/dto/ProdutoRequestDTO.java
 package com.api.erpdistribuidora.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
@@ -30,5 +31,6 @@ public class ProdutoRequestDTO {
 
     // >>> ADIÇÃO: id da categoria a ser vinculada ao produto
     // (validado na Service para garantir que não seja Departamento)
+    @JsonProperty("idCategoria")
     private Long idCategoria;
 }
