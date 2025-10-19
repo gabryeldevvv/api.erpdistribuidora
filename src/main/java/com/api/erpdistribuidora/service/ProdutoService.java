@@ -43,8 +43,6 @@ public class ProdutoService {
 
         if (dto.getNome() != null) produto.setNome(dto.getNome());
         if (dto.getDescricao() != null) produto.setDescricao(dto.getDescricao());
-        if (dto.getPrecoUnitario() != null) produto.setPrecoUnitario(dto.getPrecoUnitario());
-        if (dto.getUnidadeMedida() != null) produto.setUnidadeMedida(dto.getUnidadeMedida());
         if (dto.getDataValidade() != null) produto.setDataValidade(dto.getDataValidade());
         if (dto.getAtivo() != null) produto.setAtivo(dto.getAtivo());
 
