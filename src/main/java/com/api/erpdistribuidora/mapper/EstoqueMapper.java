@@ -4,7 +4,6 @@ import com.api.erpdistribuidora.dto.EstoqueRequestDTO;
 import com.api.erpdistribuidora.dto.EstoqueResponseDTO;
 import com.api.erpdistribuidora.model.Estoque;
 import com.api.erpdistribuidora.model.Produto;
-import com.api.erpdistribuidora.model.Local;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -20,14 +19,8 @@ public class EstoqueMapper {
             produto = new Produto();
             produto.setId(dto.getIdProduto());
         }
-        Local local = null;
-        if (dto.getIdLocal() != null) {
-            local = new Local();
-            local.setId(dto.getIdLocal());
-        }
         return Estoque.builder()
                 .produto(produto)
-                .local(local)
                 .quantidade(dto.getQuantidade())
                 .build();
     }
@@ -39,8 +32,6 @@ public class EstoqueMapper {
                 .idProduto(entity.getProduto() != null ? entity.getProduto().getId() : null)
                 .nomeProduto(entity.getProduto() != null ? entity.getProduto().getNome() : null)
                 .quantidade(entity.getQuantidade())
-                .idLocal(entity.getLocal() != null ? entity.getLocal().getId() : null)
-                .nomeLocal(entity.getLocal() != null ? entity.getLocal().getNome() : null)
                 .ultimaAtualizacao(entity.getUltimaAtualizacao())
                 .build();
     }

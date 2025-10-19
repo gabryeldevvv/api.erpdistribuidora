@@ -3,11 +3,9 @@ package com.api.erpdistribuidora.controller;
 import com.api.erpdistribuidora.dto.EstoqueRequestDTO;
 import com.api.erpdistribuidora.dto.EstoqueResponseDTO;
 import com.api.erpdistribuidora.service.EstoqueService;
-import com.api.erpdistribuidora.service.EstoqueService.EstoquePorLocalResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
@@ -48,11 +46,5 @@ public class EstoqueController {
     public ResponseEntity<Void> remover(@PathVariable Long id) {
         estoqueService.remover(id);
         return ResponseEntity.noContent().build();
-    }
-
-    // GET /estoques/por-local → retorna estoques agrupados por local
-    @GetMapping("/por-local")
-    public ResponseEntity<List<EstoquePorLocalResponseDTO>> listarAgrupadoPorLocal() {
-        return ResponseEntity.ok(estoqueService.listarAgrupadoPorLocal());
     }
 }

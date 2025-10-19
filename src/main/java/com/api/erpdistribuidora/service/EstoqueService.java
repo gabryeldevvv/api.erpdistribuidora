@@ -2,16 +2,11 @@ package com.api.erpdistribuidora.service;
 
 import com.api.erpdistribuidora.dto.EstoqueResponseDTO;
 import com.api.erpdistribuidora.dto.EstoqueRequestDTO;
-import com.api.erpdistribuidora.dto.LocalResponseDTO;
 import com.api.erpdistribuidora.exception.EstoqueNaoEncontradoException;
-import com.api.erpdistribuidora.exception.LocalNaoEncontradoException;
 import com.api.erpdistribuidora.mapper.EstoqueMapper;
-import com.api.erpdistribuidora.mapper.LocalMapper;
 import com.api.erpdistribuidora.model.Estoque;
-import com.api.erpdistribuidora.model.Local;
 import com.api.erpdistribuidora.model.Produto;
 import com.api.erpdistribuidora.repository.EstoqueRepository;
-import com.api.erpdistribuidora.repository.LocalRepository;
 import com.api.erpdistribuidora.repository.ProdutoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.*;
@@ -30,9 +25,7 @@ public class EstoqueService {
 
     private final EstoqueRepository estoqueRepository;
     private final ProdutoRepository produtoRepository;
-    private final LocalRepository localRepository;
     private final EstoqueMapper estoqueMapper;
-    private final LocalMapper localMapper;
 
     @Transactional(readOnly = true)
     public List<EstoqueResponseDTO> listar() {
@@ -48,19 +41,12 @@ public class EstoqueService {
 
     @Transactional
     public EstoqueResponseDTO criar(EstoqueRequestDTO dto) {
-        // valida produto e local
+        // valida produto
         Produto produto = produtoRepository.findById(dto.getIdProduto())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Produto inválido"));
-        Local local = localRepository.findById(dto.getIdLocal())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Local inválido"));
-
-        // impedir duplicidade
-        estoqueRepository.findByProdutoIdAndLocalId(produto.getId(), local.getId())
-                .ifPresent(e -> { throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe estoque para este produto neste local"); });
 
         Estoque novo = Estoque.builder()
                 .produto(produto)
-                .local(local)
                 .quantidade(dto.getQuantidade())
                 .build();
         Estoque salvo = estoqueRepository.save(novo);
@@ -77,18 +63,13 @@ public class EstoqueService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Produto inválido"));
             existente.setProduto(p);
         }
-        if (atualizacoes.getLocal() != null && atualizacoes.getLocal().getId() != null) {
-            Local l = localRepository.findById(atualizacoes.getLocal().getId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Local inválido"));
-            existente.setLocal(l);
-        }
         if (atualizacoes.getQuantidade() != null) {
             existente.setQuantidade(atualizacoes.getQuantidade());
         }
         try {
             return estoqueRepository.save(existente);
         } catch (DataIntegrityViolationException e) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Duplicidade de estoque para produto/local", e);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Duplicidade de estoque para produto", e);
         }
     }
 
@@ -108,29 +89,4 @@ public class EstoqueService {
         }
     }
 
-    // ===== Agrupamento por Local =====
-    @Transactional(readOnly = true)
-    public List<EstoquePorLocalResponseDTO> listarAgrupadoPorLocal() {
-        List<Estoque> todos = estoqueRepository.findAll();
-        Map<Local, List<Estoque>> agrupado = todos.stream()
-                .collect(Collectors.groupingBy(Estoque::getLocal, LinkedHashMap::new, Collectors.toList()));
-
-        List<EstoquePorLocalResponseDTO> resposta = new ArrayList<>();
-        for (Map.Entry<Local, List<Estoque>> entry : agrupado.entrySet()) {
-            Local local = entry.getKey();
-            List<EstoqueResponseDTO> itens = estoqueMapper.toResponseDTOList(entry.getValue());
-            EstoquePorLocalResponseDTO dto = new EstoquePorLocalResponseDTO(
-                    localMapper.toResponseDTO(local), itens
-            );
-            resposta.add(dto);
-        }
-        return resposta;
-    }
-
-    // DTO composto (apenas para resposta agregada)
-    @Getter @Setter @AllArgsConstructor
-    public static class EstoquePorLocalResponseDTO {
-        private LocalResponseDTO local;
-        private List<EstoqueResponseDTO> itens;
-    }
 }
