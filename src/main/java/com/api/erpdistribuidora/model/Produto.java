@@ -29,11 +29,6 @@ public class Produto {
     @Column(columnDefinition = "TEXT")
     private String descricao;
 
-    @Column(name = "preco_unitario", precision = 10, scale = 2)
-    private BigDecimal precoUnitario;
-
-    @Column(name = "unidade_medida", length = 10)
-    private String unidadeMedida;
 
     @Column(name = "data_validade")
     private LocalDate dataValidade;

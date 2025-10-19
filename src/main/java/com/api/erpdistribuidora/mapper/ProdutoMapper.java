@@ -17,8 +17,6 @@ public class ProdutoMapper {
         return Produto.builder()
                 .nome(dto.getNome())
                 .descricao(dto.getDescricao())
-                .precoUnitario(dto.getPrecoUnitario())
-                .unidadeMedida(dto.getUnidadeMedida())
                 .dataValidade(dto.getDataValidade())
                 .ativo(dto.getAtivo() != null ? dto.getAtivo() : true)
                 // categoria será resolvida/validada na Service
@@ -31,8 +29,6 @@ public class ProdutoMapper {
                 .id(entity.getId())
                 .nome(entity.getNome())
                 .descricao(entity.getDescricao())
-                .precoUnitario(entity.getPrecoUnitario())
-                .unidadeMedida(entity.getUnidadeMedida())
                 .dataValidade(entity.getDataValidade())
                 .dataCadastro(entity.getDataCadastro())
                 .ativo(entity.isAtivo())
