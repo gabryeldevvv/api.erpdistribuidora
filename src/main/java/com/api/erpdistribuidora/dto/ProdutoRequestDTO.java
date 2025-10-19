@@ -17,11 +17,9 @@ public class ProdutoRequestDTO {
 
     private String descricao;
 
-    @NotNull(message = "precoUnitario é obrigatório")
     @DecimalMin(value = "0.01", message = "precoUnitario deve ser maior que zero")
     private BigDecimal precoUnitario;
 
-    @NotBlank(message = "unidadeMedida é obrigatória")
     @Size(max = 10, message = "unidadeMedida deve ter no máximo 10 caracteres")
     private String unidadeMedida;
 

@@ -29,10 +29,10 @@ public class Produto {
     @Column(columnDefinition = "TEXT")
     private String descricao;
 
-    @Column(name = "preco_unitario", nullable = false, precision = 10, scale = 2)
+    @Column(name = "preco_unitario", precision = 10, scale = 2)
     private BigDecimal precoUnitario;
 
-    @Column(name = "unidade_medida", nullable = false, length = 10)
+    @Column(name = "unidade_medida", length = 10)
     private String unidadeMedida;
 
     @Column(name = "data_validade")
