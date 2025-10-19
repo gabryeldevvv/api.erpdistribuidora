@@ -21,7 +21,6 @@ public class Produto {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @JsonProperty("idCategoria")
     @Column(name = "id_produto")
     private Long id;
 
@@ -50,6 +49,7 @@ public class Produto {
 
     // >>> ADIÇÃO: vínculo direto do produto com categoria
     @ManyToOne(fetch = FetchType.LAZY)
+    @JsonProperty("idCategoria")
     @JoinColumn(name = "id_categoria", foreignKey = @ForeignKey(name = "produto_id_categoria_fkey"))
     private Categoria categoria;
 
