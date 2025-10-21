@@ -17,62 +17,55 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional
 public class UsuarioService {
 
-    private final UserRepository userRepository;
-    private final UsuarioMapper usuarioMapper;
+    private final UserRepository repository;
+    private final UsuarioMapper mapper;
 
+    @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> listar() {
-        return usuarioMapper.toResponseDTOList(userRepository.findAll());
+        return mapper.toResponseDTOList(repository.findAll());
     }
 
-    public UsuarioResponseDTO buscarPorId(Long id) {
-        Usuario usuario = userRepository.findById(id)
+    @Transactional(readOnly = true)
+    public UsuarioResponseDTO buscar(Long id) {
+        Usuario u = repository.findById(id)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException(id));
-        return usuarioMapper.toResponseDTO(usuario);
+        return mapper.toResponseDTO(u);
     }
 
-    @Transactional
     public UsuarioResponseDTO criar(UsuarioRequestDTO dto) {
-        if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Usuário com este email já existe.");
+        if (repository.existsByEmail(dto.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "email já cadastrado");
         }
-        Usuario usuario = usuarioMapper.toEntity(dto);
-        // TODO: Criptografar senha antes de salvar
-        return usuarioMapper.toResponseDTO(userRepository.save(usuario));
+        Usuario entity = mapper.toEntity(dto);
+        try {
+            Usuario saved = repository.save(entity);
+            return mapper.toResponseDTO(saved);
+        } catch (DataIntegrityViolationException e) {
+            // fallback de integridade (unique, not-null, etc.)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "dados inválidos: " + e.getMostSpecificCause().getMessage());
+        }
     }
 
-    @Transactional
     public UsuarioResponseDTO atualizar(Long id, UsuarioRequestDTO dto) {
-        Usuario usuarioExistente = userRepository.findById(id)
+        Usuario existente = repository.findById(id)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException(id));
+        mapper.updateEntityFromDto(dto, existente);
 
-        userRepository.findByEmail(dto.getEmail()).ifPresent(u -> {
-            if (!u.getId().equals(id)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Outro usuário com este email já existe.");
-            }
-        });
-
-        usuarioMapper.updateEntityFromDto(dto, usuarioExistente);
-        // TODO: Criptografar nova senha se for alterada
-        return usuarioMapper.toResponseDTO(userRepository.save(usuarioExistente));
+        try {
+            Usuario saved = repository.save(existente);
+            return mapper.toResponseDTO(saved);
+        } catch (DataIntegrityViolationException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "dados inválidos: " + e.getMostSpecificCause().getMessage());
+        }
     }
 
-    @Transactional
     public void remover(Long id) {
-        if (!userRepository.existsById(id)) {
+        if (!repository.existsById(id)) {
             throw new UsuarioNaoEncontradoException(id);
         }
-        try {
-            userRepository.deleteById(id);
-        } catch (DataIntegrityViolationException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Não foi possível remover o usuário: ele está vinculado a outras entidades.",
-                    e
-            );
-        }
+        repository.deleteById(id);
     }
 }
-

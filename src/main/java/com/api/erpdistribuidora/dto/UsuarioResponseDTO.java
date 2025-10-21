@@ -10,4 +10,3 @@ public class UsuarioResponseDTO {
     private String nome;
     private String email;
 }
-
