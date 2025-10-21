@@ -23,13 +23,13 @@ public class ProdutoImagem {
     @JoinColumn(name = "id_produto", nullable = false)
     private Produto produto;
 
-    @Column(name = "nome", nullable = false)
+    @Column(name = "nome", length = 150)
     private String nome;
 
-    @Column(name = "url", nullable = false)
+    @Column(name = "url", nullable = false, length = 1024)
     private String url;
 
-    @Column(name = "path", nullable = false)
+    @Column(name = "path", nullable = false, length = 512)
     private String path;
 
     @Column(name = "criado_em", updatable = false)

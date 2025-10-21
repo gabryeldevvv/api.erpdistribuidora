@@ -8,6 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/produtos")
 @RequiredArgsConstructor
@@ -16,19 +18,19 @@ public class ProdutoImagemController {
 
     private final ProdutoImagemService service;
 
-    // Envia multipart/form-data com:
-    // - part "file" (arquivo)
-    // - part "metadata" (JSON: { "produtoId": 123, "nome": "Frente" } ) - opcional
+    @GetMapping("/imagens")
+    public List<ImagemResponse> listAll() {
+        return service.listarTodas();
+    }
+
     @PostMapping(value = "/{produtoId}/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ImagemResponse upload(
             @PathVariable("produtoId") Long produtoId,
             @RequestPart("file") MultipartFile file,
-            @RequestPart(value = "metadata", required = false) ImagemRequest metadata
+            @RequestPart("metadata") ImagemRequest metadata
     ) {
-        ImagemRequest req = (metadata == null)
-                ? new ImagemRequest(produtoId, null)
-                : new ImagemRequest(
-                (metadata.produtoId() != null ? metadata.produtoId() : produtoId),
+        ImagemRequest req = new ImagemRequest(
+                produtoId,
                 metadata.nome()
         );
 

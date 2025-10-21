@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class ProdutoImagemService {
@@ -22,35 +24,46 @@ public class ProdutoImagemService {
     private final ProdutoImagemRepository imagemRepository;
     private final SupabaseStorageService storage;
 
+    @Transactional(readOnly = true)
+    public List<ImagemResponse> listarTodas() {
+        return imagemRepository.findAll()
+                .stream()
+                .map(img -> new ImagemResponse(
+                        img.getId(),
+                        img.getNome(),
+                        img.getUrl(),
+                        img.getPath(),
+                        img.getProduto().getId()
+                ))
+                .toList();
+    }
+
     @Transactional
     public ImagemResponse criar(MultipartFile file, ImagemRequest req) {
         Produto produto = produtoRepository.findById(req.produtoId())
                 .orElseThrow(() -> new EntityNotFoundException("Produto não encontrado"));
 
-        UploadResponse up = storage.uploadImage(file); // mantém seu método existente
+        String destino = "produtos/%d".formatted(produto.getId());
+        UploadResponse uploaded = storage.uploadImage(file, destino);
 
         String nome = (req.nome() != null && !req.nome().isBlank())
                 ? req.nome()
-                : (file.getOriginalFilename() != null ? file.getOriginalFilename() : "imagem");
-
-        if (up.path() == null || up.path().isBlank()) {
-            throw new IllegalStateException("Upload retornou path vazio/nulo");
-        }
+                : file.getOriginalFilename();
 
         ProdutoImagem entity = ProdutoImagem.builder()
                 .produto(produto)
                 .nome(nome)
-                .url(up.url())
-                .path(up.path())
+                .url(uploaded.url())
+                .path(uploaded.path())
                 .build();
 
-        entity = imagemRepository.saveAndFlush(entity);
+        ProdutoImagem salvo = imagemRepository.save(entity);
 
         return new ImagemResponse(
-                entity.getId(),
-                entity.getNome(),
-                entity.getUrl(),
-                entity.getPath(),
+                salvo.getId(),
+                salvo.getNome(),
+                salvo.getUrl(),
+                salvo.getPath(),
                 produto.getId()
         );
     }
