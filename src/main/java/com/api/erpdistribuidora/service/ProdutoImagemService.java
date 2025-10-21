@@ -43,27 +43,30 @@ public class ProdutoImagemService {
         Produto produto = produtoRepository.findById(req.produtoId())
                 .orElseThrow(() -> new EntityNotFoundException("Produto não encontrado"));
 
-        String destino = "produtos/%d".formatted(produto.getId());
-        UploadResponse uploaded = storage.uploadImage(file, destino);
+        UploadResponse up = storage.uploadImage(file); // mantém seu método existente
 
         String nome = (req.nome() != null && !req.nome().isBlank())
                 ? req.nome()
-                : file.getOriginalFilename();
+                : (file.getOriginalFilename() != null ? file.getOriginalFilename() : "imagem");
+
+        if (up.path() == null || up.path().isBlank()) {
+            throw new IllegalStateException("Upload retornou path vazio/nulo");
+        }
 
         ProdutoImagem entity = ProdutoImagem.builder()
                 .produto(produto)
                 .nome(nome)
-                .url(uploaded.url())
-                .path(uploaded.path())
+                .url(up.url())
+                .path(up.path())
                 .build();
 
-        ProdutoImagem salvo = imagemRepository.save(entity);
+        entity = imagemRepository.saveAndFlush(entity);
 
         return new ImagemResponse(
-                salvo.getId(),
-                salvo.getNome(),
-                salvo.getUrl(),
-                salvo.getPath(),
+                entity.getId(),
+                entity.getNome(),
+                entity.getUrl(),
+                entity.getPath(),
                 produto.getId()
         );
     }
