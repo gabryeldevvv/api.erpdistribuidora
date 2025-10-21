@@ -41,6 +41,7 @@ public class MovimentacaoEstoque {
     @Column(length = 100)
     private String referencia;
 
-    @Column(name = "id_usuario")
-    private Integer idUsuario;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_usuario", nullable = false)
+    private Usuario usuario;
 }

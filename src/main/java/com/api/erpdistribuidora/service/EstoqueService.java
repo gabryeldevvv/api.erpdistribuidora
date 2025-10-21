@@ -9,7 +9,6 @@ import com.api.erpdistribuidora.model.Produto;
 import com.api.erpdistribuidora.repository.EstoqueRepository;
 import com.api.erpdistribuidora.repository.ProdutoRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +25,7 @@ public class EstoqueService {
     private final ProdutoRepository produtoRepository;
     private final EstoqueMapper estoqueMapper;
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true )
     public List<EstoqueResponseDTO> listar() {
         return estoqueMapper.toResponseDTOList(estoqueRepository.findAll());
     }
@@ -44,6 +42,7 @@ public class EstoqueService {
         // valida produto
         Produto produto = produtoRepository.findById(dto.getIdProduto())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Produto inválido"));
+
 
         Estoque novo = Estoque.builder()
                 .produto(produto)

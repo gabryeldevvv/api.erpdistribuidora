@@ -4,6 +4,9 @@ package com.api.erpdistribuidora.service;
 import com.api.erpdistribuidora.dto.CategoriaRequestDTO;
 import com.api.erpdistribuidora.dto.CategoriaResponseDTO;
 import com.api.erpdistribuidora.exception.CategoriaNaoEncontradaException;
+import com.api.erpdistribuidora.exception.CategoriaComFilhosException;
+import com.api.erpdistribuidora.exception.CategoriaJaExisteException;
+import com.api.erpdistribuidora.exception.CategoriaPaiInvalidaException;
 import com.api.erpdistribuidora.exception.RegraCategoriaInvalidaException;
 import com.api.erpdistribuidora.mapper.CategoriaMapper;
 import com.api.erpdistribuidora.model.Categoria;
@@ -28,7 +31,7 @@ public class CategoriaService {
 
         // id_publico único
         if (repository.existsByIdPublico(dto.getIdPublico())) {
-            throw new RegraCategoriaInvalidaException("idPublico já existe: " + dto.getIdPublico());
+            throw new CategoriaJaExisteException("idPublico já existe: " + dto.getIdPublico());
         }
 
         // ligar (e validar) pai conforme regras
@@ -46,7 +49,7 @@ public class CategoriaService {
         // atualizar campos básicos
         if (dto.getIdPublico() != null && !dto.getIdPublico().equals(entity.getIdPublico())) {
             if (repository.existsByIdPublico(dto.getIdPublico())) {
-                throw new RegraCategoriaInvalidaException("idPublico já existe: " + dto.getIdPublico());
+                throw new CategoriaJaExisteException("idPublico já existe: " + dto.getIdPublico());
             }
             entity.setIdPublico(dto.getIdPublico());
         }
@@ -79,7 +82,7 @@ public class CategoriaService {
 
         // impedir remoção se houver filhos
         if (repository.countByCategoriaPaiId(id) > 0) {
-            throw new RegraCategoriaInvalidaException("Não é possível excluir: existem subcategorias vinculadas.");
+            throw new CategoriaComFilhosException("Não é possível excluir: existem subcategorias vinculadas.");
         }
         repository.delete(entity);
     }
@@ -89,26 +92,26 @@ public class CategoriaService {
         if (tipoAtual == TipoCategoria.Departamento) {
             // Departamento NÃO pode ter pai
             if (idPai != null) {
-                throw new RegraCategoriaInvalidaException("Departamento não pode possuir categoria-pai.");
+                throw new CategoriaPaiInvalidaException("Departamento não pode possuir categoria-pai.");
             }
             return null;
         }
 
         // tipoAtual == CATEGORIA
         if (idPai == null) {
-            throw new RegraCategoriaInvalidaException("Categoria deve possuir um Departamento via categoria-pai.");
+            throw new CategoriaPaiInvalidaException("Categoria deve possuir um Departamento via categoria-pai.");
         }
 
         if (idAtual != null && idPai.equals(idAtual)) {
             // evita loop direto (self-parent)
-            throw new RegraCategoriaInvalidaException("categoria-pai não pode ser a própria categoria.");
+            throw new CategoriaPaiInvalidaException("categoria-pai não pode ser a própria categoria.");
         }
 
         Categoria pai = repository.findById(idPai)
-                .orElseThrow(() -> new RegraCategoriaInvalidaException("Categoria-pai inexistente."));
+                .orElseThrow(() -> new CategoriaPaiInvalidaException("Categoria-pai inexistente."));
 
         if (pai.getTipo() != TipoCategoria.Departamento) {
-            throw new RegraCategoriaInvalidaException("Categoria-pai deve ser do tipo 'Departamento'.");
+            throw new CategoriaPaiInvalidaException("Categoria-pai deve ser do tipo \'Departamento\'");
         }
 
         return pai;

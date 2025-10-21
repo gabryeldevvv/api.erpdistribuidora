@@ -4,6 +4,7 @@ import com.api.erpdistribuidora.dto.MovimentacaoEstoqueRequestDTO;
 import com.api.erpdistribuidora.dto.MovimentacaoEstoqueResponseDTO;
 import com.api.erpdistribuidora.model.MovimentacaoEstoque;
 import com.api.erpdistribuidora.model.Produto;
+import com.api.erpdistribuidora.model.Usuario;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -16,12 +17,14 @@ public class MovimentacaoEstoqueMapper {
         if (dto == null) return null;
         Produto produto = new Produto();
         produto.setId(dto.getIdProduto());
+        Usuario usuario = new Usuario();
+        usuario.setId(dto.getIdUsuario());
         return MovimentacaoEstoque.builder()
                 .produto(produto)
                 .tipo(dto.getTipo())
                 .quantidade(dto.getQuantidade())
                 .referencia(dto.getReferencia())
-                .idUsuario(dto.getIdUsuario())
+                .usuario(usuario)
                 .build();
     }
 
@@ -35,7 +38,7 @@ public class MovimentacaoEstoqueMapper {
                 .quantidade(entity.getQuantidade())
                 .dataMovimentacao(entity.getDataMovimentacao())
                 .referencia(entity.getReferencia())
-                .idUsuario(entity.getIdUsuario())
+                .idUsuario(entity.getUsuario().getId())
                 .build();
     }
 

@@ -23,6 +23,7 @@ public class MovimentacaoEstoqueRequestDTO {
     @Size(max = 100, message = "referencia deve ter no máximo 100 caracteres")
     private String referencia;
 
-    private Integer idUsuario; // opcional; se existir autenticação, vem do contexto
+    @NotNull(message = "idUsuario é obrigatório")
+    @Positive(message = "idUsuario deve ser > 0")
+    private Long idUsuario;
 }
-

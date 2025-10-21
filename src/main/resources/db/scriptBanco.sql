@@ -1,160 +1,90 @@
--- =======================
--- 1. TABELAS PRINCIPAIS
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
 
+CREATE SEQUENCE IF NOT EXISTS local_id_seq;
+CREATE SEQUENCE IF NOT EXISTS usuario_id_seq;
 
--- Tabela de Local de Estoque (nova)
-CREATE TABLE local_estoque (
-    id_local SERIAL PRIMARY KEY,
-    nome VARCHAR(80) NOT NULL UNIQUE,
-    descricao VARCHAR(255)
+CREATE TABLE public.usuario (
+  id integer NOT NULL DEFAULT nextval('usuario_id_seq'::regclass),
+  nome character varying NOT NULL,
+  CONSTRAINT usuario_pkey PRIMARY KEY (id)
 );
 
--- =======================
-
--- Tabela de Produto (atualizada seguindo padrão de referência)
-CREATE TABLE produto (
-    id_produto SERIAL PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    descricao TEXT,
-    preco_unitario DECIMAL(10, 2) NOT NULL,
-    unidade_medida VARCHAR(10) NOT NULL,
-    data_validade DATE,
-    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    ativo BOOLEAN DEFAULT TRUE,
-    CHECK (preco_unitario > 0)
+CREATE TABLE public.categoria (
+  id integer NOT NULL DEFAULT nextval('categoria_id_seq'::regclass),
+  id_publico character varying NOT NULL UNIQUE,
+  nome character varying NOT NULL,
+  tipo character varying NOT NULL CHECK (tipo::text = ANY (ARRAY['Departamento'::character varying, 'Categoria'::character varying]::text[])),
+  id_categoria_pai integer,
+  CONSTRAINT categoria_pkey PRIMARY KEY (id),
+  CONSTRAINT categoria_id_categoria_pai_fkey FOREIGN KEY (id_categoria_pai) REFERENCES public.categoria(id)
 );
-
--- Tabela de Estoque (reestruturada)
-CREATE TABLE estoque (
-    id_estoque SERIAL PRIMARY KEY,
-    id_produto INTEGER NOT NULL REFERENCES produto(id_produto) ON DELETE CASCADE,
-    quantidade INTEGER NOT NULL DEFAULT 0,
-    id_local INTEGER NOT NULL REFERENCES local_estoque(id_local) ON DELETE RESTRICT,
-    ultima_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CHECK (quantidade >= 0),
-    UNIQUE (id_produto, id_local)
+CREATE TABLE public.estoque (
+  id_estoque integer NOT NULL DEFAULT nextval('estoque_id_estoque_seq'::regclass),
+  id_produto integer NOT NULL,
+  quantidade integer NOT NULL DEFAULT 0 CHECK (quantidade >= 0),
+  id_local integer NOT NULL,
+  ultima_atualizacao timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT estoque_pkey PRIMARY KEY (id_estoque),
+  CONSTRAINT estoque_id_produto_fkey FOREIGN KEY (id_produto) REFERENCES public.produto(id_produto),
+  CONSTRAINT estoque_id_local_fkey FOREIGN KEY (id_local) REFERENCES public.local_estoque(id_local)
 );
-
--- Tabela de Venda (reorganizada)
-CREATE TABLE venda (
-    id_venda SERIAL PRIMARY KEY,
-    data_venda TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(20) NOT NULL DEFAULT 'pendente',
-    estoque_processado BOOLEAN DEFAULT FALSE,
-    observacoes TEXT,
-    CHECK (status IN ('concluída', 'pendente', 'rascunho', 'cancelada'))
+CREATE TABLE public.local_estoque (
+  id_local integer NOT NULL DEFAULT nextval('local_id_seq'::regclass),
+  nome character varying(80) NOT NULL,
+  descricao character varying(255),
+  CONSTRAINT local_estoque_pkey PRIMARY KEY (id_local),
+  CONSTRAINT uq_local_nome UNIQUE (nome)
 );
-
--- Tabela de Item_Venda (padronizada)
-CREATE TABLE item_venda (
-    id_item_venda SERIAL PRIMARY KEY,
-    id_venda INTEGER NOT NULL REFERENCES venda(id_venda) ON DELETE CASCADE,
-    id_produto INTEGER NOT NULL REFERENCES produto(id_produto),
-    quantidade INTEGER NOT NULL,
-    preco_unitario DECIMAL(10, 2) NOT NULL,
-    desconto DECIMAL(10, 2) DEFAULT 0,
-    CHECK (quantidade > 0),
-    CHECK (preco_unitario > 0),
-    CHECK (desconto >= 0)
+CREATE TABLE public.item_venda (
+  id_item_venda integer NOT NULL DEFAULT nextval('item_venda_id_item_venda_seq'::regclass),
+  id_venda integer NOT NULL,
+  id_produto integer NOT NULL,
+  quantidade integer NOT NULL CHECK (quantidade > 0),
+  preco_unitario numeric NOT NULL CHECK (preco_unitario > 0::numeric),
+  desconto numeric DEFAULT 0 CHECK (desconto >= 0::numeric),
+  CONSTRAINT item_venda_pkey PRIMARY KEY (id_item_venda),
+  CONSTRAINT item_venda_id_venda_fkey FOREIGN KEY (id_venda) REFERENCES public.venda(id_venda),
+  CONSTRAINT item_venda_id_produto_fkey FOREIGN KEY (id_produto) REFERENCES public.produto(id_produto)
 );
-
--- Tabela de Movimentação de Estoque (completa)
-CREATE TABLE movimentacao_estoque (
-    id_movimentacao SERIAL PRIMARY KEY,
-    id_produto INTEGER NOT NULL REFERENCES produto(id_produto),
-    tipo VARCHAR(10) NOT NULL,
-    quantidade INTEGER NOT NULL,
-    data_movimentacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    referencia VARCHAR(100),
-    id_usuario INTEGER,
-    CHECK (tipo IN ('entrada', 'saida', 'ajuste')),
-    CHECK (quantidade > 0)
+CREATE TABLE public.movimentacao_estoque (
+  id_movimentacao integer NOT NULL DEFAULT nextval('movimentacao_estoque_id_movimentacao_seq'::regclass),
+  id_produto integer NOT NULL,
+  tipo character varying NOT NULL CHECK (tipo::text = ANY (ARRAY['entrada'::character varying, 'saida'::character varying, 'ajuste'::character varying]::text[])),
+  quantidade integer NOT NULL CHECK (quantidade > 0),
+  data_movimentacao timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  referencia character varying,
+  id_usuario integer,
+  CONSTRAINT movimentacao_estoque_pkey PRIMARY KEY (id_movimentacao),
+  CONSTRAINT movimentacao_estoque_id_produto_fkey FOREIGN KEY (id_produto) REFERENCES public.produto(id_produto),
+  CONSTRAINT movimentacao_estoque_id_usuario_fkey FOREIGN KEY (id_usuario) REFERENCES public.usuario(id)
 );
-
--- =======================
--- 2. ÍNDICES PARA PERFORMANCE
--- =======================
-
-CREATE INDEX idx_estoque_produto ON estoque(id_produto);
-CREATE INDEX idx_item_venda_produto ON item_venda(id_produto);
-CREATE INDEX idx_item_venda_venda ON item_venda(id_venda);
-CREATE INDEX idx_movimentacao_produto ON movimentacao_estoque(id_produto);
-CREATE INDEX idx_movimentacao_data ON movimentacao_estoque(data_movimentacao);
-CREATE INDEX idx_venda_status ON venda(status);
-
--- =======================
--- 3. FUNÇÃO + TRIGGER (PADRONIZADO)
--- =======================
-
-CREATE OR REPLACE FUNCTION processar_estoque_apos_venda()
-RETURNS TRIGGER AS $$
-DECLARE
-    item RECORD;
-    estoque_atual INTEGER;
-BEGIN
-    -- Apenas processa se status for 'concluída' e ainda não processado
-    IF NEW.status = 'concluída' AND NOT NEW.estoque_processado THEN
-        -- Verifica se todos os itens têm estoque suficiente
-        FOR item IN
-            SELECT iv.id_produto, iv.quantidade
-            FROM item_venda iv
-            WHERE iv.id_venda = NEW.id_venda
-        LOOP
-            SELECT quantidade INTO estoque_atual
-            FROM estoque
-            WHERE id_produto = item.id_produto
-            FOR UPDATE;
-
-            IF estoque_atual IS NULL THEN
-                RAISE EXCEPTION 'Produto ID % não está registrado no estoque.', item.id_produto;
-            END IF;
-
-            IF estoque_atual < item.quantidade THEN
-                RAISE EXCEPTION 'Estoque insuficiente para o produto ID % (disponível: %, necessário: %).',
-                    item.id_produto, estoque_atual, item.quantidade;
-            END IF;
-        END LOOP;
-
-        -- Atualiza estoque e registra movimentações
-        FOR item IN
-            SELECT iv.id_produto, iv.quantidade
-            FROM item_venda iv
-            WHERE iv.id_venda = NEW.id_venda
-        LOOP
-            -- Atualizar estoque
-            UPDATE estoque
-            SET quantidade = quantidade - item.quantidade,
-                ultima_atualizacao = CURRENT_TIMESTAMP
-            WHERE id_produto = item.id_produto;
-
-            -- Registrar movimentação
-            INSERT INTO movimentacao_estoque (
-                id_produto, tipo, quantidade, data_movimentacao, referencia
-            ) VALUES (
-                item.id_produto, 'saida', item.quantidade, CURRENT_TIMESTAMP,
-                'Venda #' || NEW.id_venda
-            );
-        END LOOP;
-
-        -- Marcar como processado
-        NEW.estoque_processado := TRUE;
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Trigger para processamento automático de estoque
-CREATE TRIGGER tg_processar_estoque_apos_venda
-AFTER INSERT OR UPDATE OF status ON venda
-FOR EACH ROW
-WHEN (NEW.status = 'concluída')
-EXECUTE FUNCTION processar_estoque_apos_venda();
-
--- =======================
--- 4. COMENTÁRIOS ADICIONAIS
--- =======================
-
-COMMENT ON TABLE produto IS 'Armazena informações dos produtos disponíveis para venda';
-COMMENT ON COLUMN produto.preco_unitario IS 'Preço unitário do produto em reais (R$)';
-COMMENT ON FUNCTION processar_estoque_apos_venda() IS 'Função para atualizar estoque automaticamente após confirmação de venda';
+CREATE TABLE public.produto (
+  id_produto integer NOT NULL DEFAULT nextval('produto_id_produto_seq'::regclass),
+  nome character varying NOT NULL,
+  descricao text,
+  data_validade date,
+  data_cadastro timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  ativo boolean DEFAULT true,
+  id_categoria integer NOT NULL,
+  CONSTRAINT produto_pkey PRIMARY KEY (id_produto),
+  CONSTRAINT produto_id_categoria_fkey FOREIGN KEY (id_categoria) REFERENCES public.categoria(id)
+);
+CREATE TABLE public.produto_imagem (
+  id_imagem integer NOT NULL DEFAULT nextval('produto_imagem_id_imagem_seq'::regclass),
+  id_produto integer NOT NULL,
+  nome character varying NOT NULL,
+  url character varying NOT NULL,
+  path character varying NOT NULL,
+  criado_em timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT produto_imagem_pkey PRIMARY KEY (id_imagem),
+  CONSTRAINT produto_imagem_id_produto_fkey FOREIGN KEY (id_produto) REFERENCES public.produto(id_produto)
+);
+CREATE TABLE public.venda (
+  id_venda integer NOT NULL DEFAULT nextval('venda_id_venda_seq'::regclass),
+  data_venda timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  status character varying NOT NULL DEFAULT 'pendente'::character varying CHECK (status::text = ANY (ARRAY['concluída'::character varying, 'pendente'::character varying, 'rascunho'::character varying, 'cancelada'::character varying]::text[])),
+  estoque_processado boolean DEFAULT false,
+  observacoes text,
+  CONSTRAINT venda_pkey PRIMARY KEY (id_venda)
+);

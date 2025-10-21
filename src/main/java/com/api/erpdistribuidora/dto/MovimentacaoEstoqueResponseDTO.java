@@ -14,5 +14,5 @@ public class MovimentacaoEstoqueResponseDTO {
     private Integer quantidade;
     private LocalDateTime dataMovimentacao;
     private String referencia;
-    private Integer idUsuario;
+    private Long idUsuario;
 }

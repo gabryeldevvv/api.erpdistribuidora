@@ -26,6 +26,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +44,7 @@ public class VendaService {
     private final ItemVendaMapper itemVendaMapper;
     private final VendaMapper vendaMapper;
 
-    public VendaResponseDTO criar(VendaRequestDTO dto) {
+    public VendaResponseDTO criar(VendaRequestDTO dto ) {
         Venda venda = Venda.builder()
                 .status(dto.getStatus() != null ? dto.getStatus() : "pendente")
                 .observacoes(dto.getObservacoes())
@@ -109,7 +112,15 @@ public class VendaService {
         if (!vendaRepository.existsById(idVenda)) {
             throw new VendaNaoEncontradaException(idVenda);
         }
-        vendaRepository.deleteById(idVenda);
+        try {
+            vendaRepository.deleteById(idVenda);
+        } catch (DataIntegrityViolationException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Não foi possível remover a venda: existem itens de venda vinculados.",
+                    e
+            );
+        }
     }
 
     /**
@@ -166,4 +177,3 @@ public class VendaService {
         }
     }
 }
-
