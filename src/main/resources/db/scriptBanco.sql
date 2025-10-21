@@ -7,6 +7,8 @@ CREATE SEQUENCE IF NOT EXISTS usuario_id_seq;
 CREATE TABLE public.usuario (
   id integer NOT NULL DEFAULT nextval('usuario_id_seq'::regclass),
   nome character varying NOT NULL,
+  email character varying NOT NULL UNIQUE,
+  senha character varying NOT NULL,
   CONSTRAINT usuario_pkey PRIMARY KEY (id)
 );
 
@@ -30,7 +32,7 @@ CREATE TABLE public.estoque (
   CONSTRAINT estoque_id_local_fkey FOREIGN KEY (id_local) REFERENCES public.local_estoque(id_local)
 );
 CREATE TABLE public.local_estoque (
-  id_local integer NOT NULL DEFAULT nextval('local_id_seq'::regclass),
+  id_local integer NOT NULL DEFAULT nextval(\'local_id_seq\':regclass),
   nome character varying(80) NOT NULL,
   descricao character varying(255),
   CONSTRAINT local_estoque_pkey PRIMARY KEY (id_local),
