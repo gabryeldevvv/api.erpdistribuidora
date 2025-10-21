@@ -48,10 +48,11 @@ public class UsuarioService {
         Usuario usuarioExistente = userRepository.findById(id)
                 .orElseThrow(() -> new UsuarioNaoEncontradoException(id));
 
-        if (userRepository.findByEmail(dto.getEmail()).isPresent() &&
-                !userRepository.findByEmail(dto.getEmail()).get().getId().equals(id)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Outro usuário com este email já existe.");
-        }
+        userRepository.findByEmail(dto.getEmail()).ifPresent(u -> {
+            if (!u.getId().equals(id)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Outro usuário com este email já existe.");
+            }
+        });
 
         usuarioMapper.updateEntityFromDto(dto, usuarioExistente);
         // TODO: Criptografar nova senha se for alterada

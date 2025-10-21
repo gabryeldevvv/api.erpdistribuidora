@@ -1,25 +1,25 @@
 package com.api.erpdistribuidora.dto;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.*;
-import jakarta.validation.constraints.*;
 
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class UsuarioRequestDTO {
 
-    private Long id;
-
-    @NotBlank(message = "Nome é obrigatório")
-    @Size(min = 3, max = 100, message = "Nome deve ter entre 3 e 100 caracteres")
+    @NotBlank(message = "nome é obrigatório")
+    @Size(max = 100, message = "nome deve ter no máximo 100 caracteres")
     private String nome;
 
-    @NotBlank(message = "Email é obrigatório")
-    @Email(message = "Email deve ser válido")
+    @NotBlank(message = "email é obrigatório")
+    @Email(message = "email inválido")
+    @Size(max = 120, message = "email deve ter no máximo 120 caracteres")
     private String email;
 
-    @NotBlank(message = "Senha é obrigatória")
-    @Size(min = 6, message = "Senha deve ter no mínimo 6 caracteres")
+    @NotBlank(message = "senha é obrigatório")
+    @Size(max = 120, message = "senha deve ter no máximo 120 caracteres")
     private String senha;
 }
-
