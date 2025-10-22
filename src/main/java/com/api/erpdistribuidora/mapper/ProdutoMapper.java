@@ -19,7 +19,7 @@ public class ProdutoMapper {
                 .descricao(dto.getDescricao())
                 .dataValidade(dto.getDataValidade())
                 .ativo(dto.getAtivo() != null ? dto.getAtivo() : true)
-                // categoria será resolvida/validada na Service
+                // categoria será resolvida/validada na  Service
                 .build();
     }
 
