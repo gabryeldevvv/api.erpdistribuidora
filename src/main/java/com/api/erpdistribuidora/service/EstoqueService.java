@@ -1,7 +1,7 @@
 package com.api.erpdistribuidora.service;
 
-import com.api.erpdistribuidora.dto.EstoqueResponseDTO;
 import com.api.erpdistribuidora.dto.EstoqueRequestDTO;
+import com.api.erpdistribuidora.dto.EstoqueResponseDTO;
 import com.api.erpdistribuidora.exception.EstoqueNaoEncontradoException;
 import com.api.erpdistribuidora.mapper.EstoqueMapper;
 import com.api.erpdistribuidora.model.Estoque;
@@ -28,6 +28,12 @@ public class EstoqueService {
     @Transactional(readOnly = true )
     public List<EstoqueResponseDTO> listar() {
         return estoqueMapper.toResponseDTOList(estoqueRepository.findAll());
+    }
+
+    @Transactional(readOnly = true)
+    public List<EstoqueResponseDTO> listarPorProduto(Long idProduto) {
+        var lista = estoqueRepository.findByProdutoId(idProduto);
+        return estoqueMapper.toResponseDTOList(lista);
     }
 
     @Transactional(readOnly = true)

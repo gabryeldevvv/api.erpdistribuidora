@@ -14,7 +14,4 @@ public class EstoqueRequestDTO {
     @NotNull(message = "quantidade é obrigatória")
     @PositiveOrZero(message = "quantidade deve ser >= 0")
     private Integer quantidade;
-
-    @NotNull(message = "idLocal é obrigatório")
-    private Long idLocal;
 }

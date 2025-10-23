@@ -1,5 +1,7 @@
 package com.api.erpdistribuidora.controller;
 
+import com.api.erpdistribuidora.dto.ImagemRequest;
+import com.api.erpdistribuidora.dto.ImagemResponse;
 import com.api.erpdistribuidora.dto.UploadResponse;
 import com.api.erpdistribuidora.service.storage.SupabaseStorageService;
 import org.springframework.http.MediaType;
@@ -7,8 +9,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 // NOVO:
-import com.api.erpdistribuidora.dto.ImagemRequest;
-import com.api.erpdistribuidora.dto.ImagemResponse;
 import com.api.erpdistribuidora.service.ProdutoImagemService;
 
 @CrossOrigin(origins = {"http://localhost:5173"})

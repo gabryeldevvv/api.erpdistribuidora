@@ -2,6 +2,7 @@ package com.api.erpdistribuidora.controller;
 
 import com.api.erpdistribuidora.dto.EstoqueRequestDTO;
 import com.api.erpdistribuidora.dto.EstoqueResponseDTO;
+import com.api.erpdistribuidora.mapper.EstoqueMapper;
 import com.api.erpdistribuidora.service.EstoqueService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,11 +18,16 @@ import java.util.List;
 public class EstoqueController {
 
     private final EstoqueService estoqueService;
-    private final com.api.erpdistribuidora.mapper.EstoqueMapper estoqueMapper;
+    private final EstoqueMapper estoqueMapper;
 
     @GetMapping
     public ResponseEntity<List<EstoqueResponseDTO>> listar() {
         return ResponseEntity.ok(estoqueService.listar());
+    }
+
+    @GetMapping("/por-produto/{idProduto}")
+    public ResponseEntity<List<EstoqueResponseDTO>> listarPorProduto(@PathVariable Long idProduto) {
+        return ResponseEntity.ok(estoqueService.listarPorProduto(idProduto));
     }
 
     @GetMapping("/{id}")

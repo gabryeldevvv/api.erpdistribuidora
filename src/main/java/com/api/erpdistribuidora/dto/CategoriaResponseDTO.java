@@ -4,8 +4,6 @@ package com.api.erpdistribuidora.dto;
 import com.api.erpdistribuidora.model.TipoCategoria;
 import lombok.*;
 
-import java.time.LocalDateTime;
-
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder

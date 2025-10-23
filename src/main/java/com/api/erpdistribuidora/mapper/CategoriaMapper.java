@@ -4,7 +4,6 @@ package com.api.erpdistribuidora.mapper;
 import com.api.erpdistribuidora.dto.CategoriaRequestDTO;
 import com.api.erpdistribuidora.dto.CategoriaResponseDTO;
 import com.api.erpdistribuidora.model.Categoria;
-import com.api.erpdistribuidora.model.TipoCategoria;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

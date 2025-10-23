@@ -3,11 +3,10 @@ package com.api.erpdistribuidora.service;
 
 import com.api.erpdistribuidora.dto.CategoriaRequestDTO;
 import com.api.erpdistribuidora.dto.CategoriaResponseDTO;
-import com.api.erpdistribuidora.exception.CategoriaNaoEncontradaException;
 import com.api.erpdistribuidora.exception.CategoriaComFilhosException;
 import com.api.erpdistribuidora.exception.CategoriaJaExisteException;
+import com.api.erpdistribuidora.exception.CategoriaNaoEncontradaException;
 import com.api.erpdistribuidora.exception.CategoriaPaiInvalidaException;
-import com.api.erpdistribuidora.exception.RegraCategoriaInvalidaException;
 import com.api.erpdistribuidora.mapper.CategoriaMapper;
 import com.api.erpdistribuidora.model.Categoria;
 import com.api.erpdistribuidora.model.TipoCategoria;
