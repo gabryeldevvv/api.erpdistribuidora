@@ -6,6 +6,7 @@ import com.api.erpdistribuidora.dto.MovimentacaoEstoqueResponseDTO;
 import com.api.erpdistribuidora.service.MovimentacaoEstoqueService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,10 +27,12 @@ public class MovimentacaoEstoqueController {
     @GetMapping("/produto/{idProduto}")
     public ResponseEntity<List<MovimentacaoEstoqueResponseDTO>> listarPorProduto(@PathVariable Long idProduto) {
         return ResponseEntity.ok(movimentacaoService.listarPorProduto(idProduto));
+
     }
 
     @PostMapping
     public ResponseEntity<MovimentacaoEstoqueResponseDTO> criar(@Valid @RequestBody MovimentacaoEstoqueRequestDTO dto) {
-        return ResponseEntity.ok(movimentacaoService.criar(dto));
+        MovimentacaoEstoqueResponseDTO created = movimentacaoService.criar(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 }
