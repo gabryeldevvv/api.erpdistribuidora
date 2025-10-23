@@ -2,6 +2,8 @@
 package com.api.erpdistribuidora.service;
 
 import com.api.erpdistribuidora.dto.MovimentacaoEstoqueRequestDTO;
+import com.api.erpdistribuidora.dto.MovimentacaoEstoqueResponseDTO;
+import com.api.erpdistribuidora.mapper.MovimentacaoEstoqueMapper;
 import com.api.erpdistribuidora.model.Estoque;
 import com.api.erpdistribuidora.model.MovimentacaoEstoque;
 import com.api.erpdistribuidora.repository.EstoqueRepository;
@@ -25,48 +27,49 @@ public class MovimentacaoEstoqueService {
     private final ProdutoRepository produtoRepository;
     private final UserRepository userRepository;
     private final EstoqueRepository estoqueRepository;
+    private final MovimentacaoEstoqueMapper mapper; // <-- injetado
 
-    public List<MovimentacaoEstoque> listarTodas() {
-        return movimentacaoRepository.findAll();
+    public List<MovimentacaoEstoqueResponseDTO> listarTodas() {
+        var lista = movimentacaoRepository.findAll();
+        return mapper.toResponseDTOList(lista);
     }
 
-    public List<MovimentacaoEstoque> listarPorProduto(Long idProduto) {
-        return movimentacaoRepository.findByProdutoIdOrderByDataMovimentacaoDesc(idProduto);
+    public List<MovimentacaoEstoqueResponseDTO> listarPorProduto(Long idProduto) {
+        var lista = movimentacaoRepository.findByProdutoIdOrderByDataMovimentacaoDesc(idProduto);
+        return mapper.toResponseDTOList(lista);
     }
 
-    @Transactional // override do readOnly=true de classe
-    public MovimentacaoEstoque criar(MovimentacaoEstoqueRequestDTO dto) {
+    @Transactional
+    public MovimentacaoEstoqueResponseDTO criar(MovimentacaoEstoqueRequestDTO dto) {
         var produto = produtoRepository.findById(dto.getIdProduto())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Produto inválido"));
 
         var usuario = userRepository.findById(dto.getIdUsuario())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Usuário inválido"));
 
-        // Obtém (ou cria) o registro de estoque do produto
+        // obtém (ou cria) o estoque do produto
         var estoques = estoqueRepository.findByProdutoId(produto.getId());
         Estoque estoque = estoques.isEmpty()
                 ? Estoque.builder().produto(produto).quantidade(0).build()
                 : estoques.get(0);
 
         int atual = estoque.getQuantidade() == null ? 0 : estoque.getQuantidade();
-        int q = dto.getQuantidade(); // DTO garante > 0
+        int q = dto.getQuantidade();
 
         switch (dto.getTipo()) {
             case "entrada" -> atual += q;
             case "saida" -> {
-                if (atual < q) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Saldo insuficiente");
-                }
+                if (atual < q) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Saldo insuficiente");
                 atual -= q;
             }
-            case "ajuste" -> atual = q; // ajuste define o novo saldo
+            case "ajuste" -> atual = q;
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tipo inválido");
         }
 
         estoque.setQuantidade(atual);
         estoqueRepository.save(estoque);
 
-        var mov = MovimentacaoEstoque.builder()
+        MovimentacaoEstoque mov = MovimentacaoEstoque.builder()
                 .produto(produto)
                 .tipo(dto.getTipo())
                 .quantidade(dto.getQuantidade())
@@ -74,6 +77,7 @@ public class MovimentacaoEstoqueService {
                 .usuario(usuario)
                 .build();
 
-        return movimentacaoRepository.save(mov);
+        mov = movimentacaoRepository.save(mov);
+        return mapper.toResponseDTO(mov); // <-- service já retorna DTO
     }
 }

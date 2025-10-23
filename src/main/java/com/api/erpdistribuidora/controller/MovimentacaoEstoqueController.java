@@ -1,12 +1,15 @@
+// src/main/java/com/api/erpdistribuidora/controller/MovimentacaoEstoqueController.java
 package com.api.erpdistribuidora.controller;
 
 import com.api.erpdistribuidora.dto.MovimentacaoEstoqueRequestDTO;
-import com.api.erpdistribuidora.mapper.MovimentacaoEstoqueMapper;
+import com.api.erpdistribuidora.dto.MovimentacaoEstoqueResponseDTO;
 import com.api.erpdistribuidora.service.MovimentacaoEstoqueService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/movimentacoes-estoque")
@@ -14,25 +17,19 @@ import org.springframework.web.bind.annotation.*;
 public class MovimentacaoEstoqueController {
 
     private final MovimentacaoEstoqueService movimentacaoService;
-    private final MovimentacaoEstoqueMapper mapper;
 
     @GetMapping
-    public ResponseEntity<?> listarTodas() {
-        var lista = movimentacaoService.listarTodas();
-        return ResponseEntity.ok(mapper.toResponseDTOList(lista));
+    public ResponseEntity<List<MovimentacaoEstoqueResponseDTO>> listarTodas() {
+        return ResponseEntity.ok(movimentacaoService.listarTodas());
     }
 
     @GetMapping("/produto/{idProduto}")
-    public ResponseEntity<?> listarPorProduto(@PathVariable Long idProduto) {
-        var lista = movimentacaoService.listarPorProduto(idProduto);
-        return ResponseEntity.ok(mapper.toResponseDTOList(lista));
+    public ResponseEntity<List<MovimentacaoEstoqueResponseDTO>> listarPorProduto(@PathVariable Long idProduto) {
+        return ResponseEntity.ok(movimentacaoService.listarPorProduto(idProduto));
     }
 
     @PostMapping
-    public ResponseEntity<?> criar(@Valid @RequestBody MovimentacaoEstoqueRequestDTO dto) {
-        var criado = movimentacaoService.criar(dto);
-        return ResponseEntity.ok(mapper.toResponseDTO(criado));
+    public ResponseEntity<MovimentacaoEstoqueResponseDTO> criar(@Valid @RequestBody MovimentacaoEstoqueRequestDTO dto) {
+        return ResponseEntity.ok(movimentacaoService.criar(dto));
     }
 }
-
-
