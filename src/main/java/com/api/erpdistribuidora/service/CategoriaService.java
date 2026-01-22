@@ -28,10 +28,6 @@ public class CategoriaService {
     public CategoriaResponseDTO criar(CategoriaRequestDTO dto) {
         Categoria categoria = mapper.toEntity(dto);
 
-        // id_publico único
-        if (repository.existsByIdPublico(dto.getIdPublico())) {
-            throw new CategoriaJaExisteException("idPublico já existe: " + dto.getIdPublico());
-        }
 
         // ligar (e validar) pai conforme regras
         Categoria pai = resolverEValidarPai(dto.getIdCategoriaPai(), dto.getTipo(), null);
@@ -45,13 +41,7 @@ public class CategoriaService {
         Categoria entity = repository.findById(id)
                 .orElseThrow(() -> new CategoriaNaoEncontradaException(id));
 
-        // atualizar campos básicos
-        if (dto.getIdPublico() != null && !dto.getIdPublico().equals(entity.getIdPublico())) {
-            if (repository.existsByIdPublico(dto.getIdPublico())) {
-                throw new CategoriaJaExisteException("idPublico já existe: " + dto.getIdPublico());
-            }
-            entity.setIdPublico(dto.getIdPublico());
-        }
+
         if (dto.getNome() != null) entity.setNome(dto.getNome());
         if (dto.getTipo() != null) entity.setTipo(dto.getTipo());
 

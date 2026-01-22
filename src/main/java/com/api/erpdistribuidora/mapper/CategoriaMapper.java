@@ -15,7 +15,6 @@ public class CategoriaMapper {
     public Categoria toEntity(CategoriaRequestDTO dto) {
         if (dto == null) return null;
         return Categoria.builder()
-                .idPublico(dto.getIdPublico())
                 .nome(dto.getNome())
                 .tipo(dto.getTipo())
                 // categoriaPai será ligado no service (para garantir existência e tipo)
@@ -26,7 +25,6 @@ public class CategoriaMapper {
         if (entity == null) return null;
         return CategoriaResponseDTO.builder()
                 .id(entity.getId())
-                .idPublico(entity.getIdPublico())
                 .nome(entity.getNome())
                 .tipo(entity.getTipo())
                 .idCategoriaPai(entity.getCategoriaPai() != null ? entity.getCategoriaPai().getId() : null)

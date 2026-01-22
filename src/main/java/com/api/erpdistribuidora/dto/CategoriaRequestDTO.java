@@ -11,9 +11,6 @@ import lombok.*;
 @Builder
 public class CategoriaRequestDTO {
 
-    @NotBlank(message = "idPublico é obrigatório")
-    @Size(max = 50, message = "idPublico deve ter no máximo 50 caracteres")
-    private String idPublico;
 
     @NotBlank(message = "nome é obrigatório")
     @Size(max = 100, message = "nome deve ter no máximo 100 caracteres")
