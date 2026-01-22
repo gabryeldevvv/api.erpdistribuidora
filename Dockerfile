@@ -1,26 +1,48 @@
-# Use uma imagem base com o JDK 21 para o estágio de build
-FROM openjdk:21-jdk-slim as builder
+# Stage 1: Build the application
+FROM maven:3.9-eclipse-temurin-21 AS build
 
-# Instalar Maven
-RUN apt-get update && apt-get install -y maven
-
-# Definir o diretório de trabalho dentro do container
+# Set the working directory
 WORKDIR /app
 
-# Copiar os arquivos do projeto para o diretório de trabalho
-COPY . /app
+# Copy the pom.xml file first to leverage Docker cache
+COPY pom.xml .
 
-# Executar o build com Maven
+# Download dependencies - this layer will be cached unless pom.xml changes
+RUN mvn dependency:go-offline -B
+
+# Copy the source code
+COPY src ./src
+
+# Build the application
 RUN mvn clean package -DskipTests
 
-# Segundo estágio: imagem final
-FROM openjdk:21-jdk-slim
+# Stage 2: Create the runtime image
+FROM eclipse-temurin:21-jre-alpine
 
-# Copiar o JAR do estágio de build
-COPY --from=builder /app/target/api-0.0.1-SNAPSHOT.jar demo.jar
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
 
-# Expor a porta
-EXPOSE 8080
+# Create a non-root user to run the application
+RUN addgroup -g 1000 spring && adduser -u 1000 -G spring -s /bin/sh -D spring
 
-# Definir o comando de execução
-ENTRYPOINT ["java", "-jar", "demo.jar"]
+# Set the working directory
+WORKDIR /app
+
+# Copy the JAR file from the build stage
+COPY --from=build /app/target/*.jar app.jar
+
+# Change ownership of the application files
+RUN chown -R spring:spring /app
+
+# Switch to the non-root user
+USER spring:spring
+
+# Expose the port Spring Boot runs on
+ENV PORT=8080
+EXPOSE $PORT
+
+# Use dumb-init to run the application
+ENTRYPOINT ["dumb-init", "--"]
+
+# Run the Spring Boot application with Java 21 optimizations
+CMD ["java", "-XX:+UseZGC", "-XX:MaxRAMPercentage=75.0", "-Dserver.port=${PORT}", "-jar", "app.jar"]

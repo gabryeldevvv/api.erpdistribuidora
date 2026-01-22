@@ -1,10 +1,10 @@
-# fly.toml app configuration file generated for api-erpdistribuidora on 2025-08-15T09:15:35Z
+# fly.toml app configuration file generated for api-erpdistribuidora on 2026-01-22T19:56:20Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
 app = 'api-erpdistribuidora'
-primary_region = 'gru'
+primary_region = 'fra'
 
 [build]
 
